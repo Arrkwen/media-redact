@@ -89,7 +89,8 @@ usage: media-redact [-h] [-o OUTPUT]
                     [--mask {blur,mosaic,solid,none}]
                     [--mask-shape {ellipse,polygon}]
                     [--mask-scale MASK_SCALE] [--mosaic-size MOSAIC_SIZE]
-                    [--keep-audio] [--disable-progress] [--version]
+                    [--keep-audio] [--disable-progress]
+                    [--log-level {DEBUG,INFO,WARNING,ERROR}] [--version]
                     input
 ```
 
@@ -107,6 +108,8 @@ usage: media-redact [-h] [-o OUTPUT]
 | `--mask-scale`     | 1.3     | 人脸区域扩展比例                                         |
 | `--mosaic-size`    | 20      | 马赛克块大小                                           |
 | `--keep-audio`     | false   | 视频保留原音频                                          |
+| `--disable-progress` | false | 关闭视频帧进度条与批量文件进度条                              |
+| `--log-level`      | INFO    | 日志级别（DEBUG / INFO / WARNING / ERROR）              |
 
 
 ### OSD 区域参数
@@ -158,6 +161,45 @@ media-region --log-level DEBUG
 
 
 标注完成后，将复制的参数与 `--osd` 一起用于 `media-redact` 即可。
+
+### Python API
+
+除 CLI 外，也可在 Python 代码中调用 `redact_image()` / `redact_video()`，支持单文件、多文件或目录；目录可递归处理。批量输出通过 `output_dir` 指定根目录，**保留输入相对路径的子目录结构**，文件名追加 `_redacted` 后缀。
+
+```python
+from media_redact import redact_image, redact_video
+
+# 单张图片
+redact_image("photo.jpg", face=True)
+
+# 指定输出路径
+redact_image("photo.jpg", "out.jpg", face=True)
+
+# 目录批量（递归），保留子目录结构
+redact_image(
+    "input_dir/",
+    output_dir="output_dir/",
+    recursive=True,
+    face=True,
+)
+
+# 多个文件
+redact_image(
+    ["a.jpg", "b.jpg"],
+    output_dir="output_dir/",
+    osd=True,
+    osd_regions=["0,972;1920,972;1920,1080;0,1080"],
+)
+
+# 视频同理
+redact_video(
+    "input_videos/",
+    output_dir="output_videos/",
+    recursive=True,
+    face=True,
+    keep_audio=True,
+)
+```
 
 ---
 

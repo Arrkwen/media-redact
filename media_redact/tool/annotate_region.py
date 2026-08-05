@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import cgi
 import json
-import logging
 import mimetypes
 import os
 import shutil
@@ -27,24 +26,17 @@ from urllib import request as urllib_request
 
 import cv2
 
+from media_redact.log import PrintfLogger, setup_logging
+
 DEFAULT_PORT = 8765
 _TEMPLATE_PATH = Path(__file__).resolve().parent / "templates" / "annotate.html"
-LOGGER = logging.getLogger("media-region")
+LOGGER = PrintfLogger()
 
 _IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".tif", ".tiff"}
 _VIDEO_EXTS = {".mp4", ".avi", ".mkv", ".mov", ".webm", ".m4v", ".ts"}
 _STREAM_SCHEMES = {"rtsp", "rtmp", "http", "https"}
 _RTSP_FFMPEG_OPTIONS = "rtsp_transport;tcp|stimeout;5000000"
 _STREAM_CAPTURE_TIMEOUT_SEC = 30
-
-
-def setup_logging(level: str) -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)s [media-region] %(message)s",
-        datefmt="%H:%M:%S",
-        force=True,
-    )
 
 
 def _safe_url(url: str) -> str:
@@ -684,7 +676,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    setup_logging(args.log_level)
+    setup_logging(args.log_level, component="media-region")
     media_path = Path(args.media) if args.media else None
     if media_path is not None and not media_path.exists():
         LOGGER.error("Media file not found: %s", media_path)

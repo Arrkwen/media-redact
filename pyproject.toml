@@ -14,6 +14,7 @@ dependencies = [
     "onnx",
     "onnxruntime<=1.19",
     "imageio[ffmpeg]",
+    "loguru",
     "tqdm",
 ]
 

@@ -7,6 +7,7 @@ from pathlib import Path
 import imageio
 import tqdm
 
+from media_redact.log import logger
 from media_redact.pipeline.processor import RedactProcessor
 
 
@@ -18,7 +19,12 @@ def process_video(
     keep_audio: bool = False,
     ffmpeg_codec: str = "libx264",
     disable_progress: bool = False,
+    progress_position: int | None = None,
 ) -> None:
+    input_path = Path(input_path)
+    output_path = Path(output_path)
+    logger.debug("Open video: {} -> {}", input_path, output_path)
+
     reader = imageio.get_reader(str(input_path))
     try:
         meta = reader.get_meta_data()
@@ -37,7 +43,18 @@ def process_video(
     except Exception:
         nframes = None
 
-    bar = tqdm.tqdm(total=nframes, disable=disable_progress, dynamic_ncols=True)
+    tqdm_kwargs: dict = {
+        "total": nframes,
+        "disable": disable_progress,
+        "dynamic_ncols": True,
+        "desc": input_path.name,
+        "unit": "frame",
+        "leave": progress_position is None,
+    }
+    if progress_position is not None:
+        tqdm_kwargs["position"] = progress_position
+
+    bar = tqdm.tqdm(**tqdm_kwargs)
     try:
         for frame in reader.iter_data():
             result = processor.process_frame(frame)
@@ -47,3 +64,5 @@ def process_video(
         bar.close()
         reader.close()
         writer.close()
+
+    logger.debug("Video saved: {}", output_path)

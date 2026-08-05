@@ -89,7 +89,8 @@ usage: media-redact [-h] [-o OUTPUT]
                     [--mask {blur,mosaic,solid,none}]
                     [--mask-shape {ellipse,polygon}]
                     [--mask-scale MASK_SCALE] [--mosaic-size MOSAIC_SIZE]
-                    [--keep-audio] [--disable-progress] [--version]
+                    [--keep-audio] [--disable-progress]
+                    [--log-level {DEBUG,INFO,WARNING,ERROR}] [--version]
                     input
 ```
 
@@ -106,7 +107,9 @@ usage: media-redact [-h] [-o OUTPUT]
 | `--mask-shape`     | polygon   | Region shape: ellipse / polygon                                     |
 | `--mask-scale`     | 1.3       | Face region expansion factor                                        |
 | `--mosaic-size`    | 20        | Mosaic block size                                                   |
-| `--keep-audio`     | false     | Preserve original audio for video                                   |
+| `--keep-audio` | false | Preserve original audio for video |
+| `--disable-progress` | false | Disable frame and batch file progress bars |
+| `--log-level` | INFO | Log level (DEBUG / INFO / WARNING / ERROR) |
 
 
 ### OSD Region Format
@@ -158,6 +161,45 @@ media-region --log-level DEBUG
 
 
 Use the copied parameters with `--osd` in `media-redact`.
+
+### Python API
+
+You can also call `redact_image()` / `redact_video()` from Python. Inputs may be a single file, multiple files, or a directory (with optional recursive traversal). For batch runs, set `output_dir` as the output root—the **relative subdirectory layout is preserved**, and `_redacted` is appended to each filename.
+
+```python
+from media_redact import redact_image, redact_video
+
+# Single image
+redact_image("photo.jpg", face=True)
+
+# Explicit output path
+redact_image("photo.jpg", "out.jpg", face=True)
+
+# Directory batch (recursive), preserving subdirectories
+redact_image(
+    "input_dir/",
+    output_dir="output_dir/",
+    recursive=True,
+    face=True,
+)
+
+# Multiple files
+redact_image(
+    ["a.jpg", "b.jpg"],
+    output_dir="output_dir/",
+    osd=True,
+    osd_regions=["0,972;1920,972;1920,1080;0,1080"],
+)
+
+# Videos work the same way
+redact_video(
+    "input_videos/",
+    output_dir="output_videos/",
+    recursive=True,
+    face=True,
+    keep_audio=True,
+)
+```
 
 ---
 

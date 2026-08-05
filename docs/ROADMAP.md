@@ -74,9 +74,9 @@ media-redact/
 
 ### v0.2 — 易用性
 
-- [ ] 批量目录处理
-- [ ] Python API：`redact_image()` / `redact_video()`
-- [ ] 进度与日志完善
+- [x] 批量目录处理（Python API：`output_dir` + `recursive`）
+- [x] Python API：`redact_image()` / `redact_video()`
+- [x] 进度与日志完善（loguru + 批量文件进度条）
 
 ### v0.3 — OCR OSD
 
@@ -121,6 +121,7 @@ media-redact assets/data/input.mp4 --face --osd \
 | onnxruntime                   | ONNX 推理 |
 | imageio[ffmpeg]               | 视频读写    |
 | pyyaml                        | OSD 配置  |
+| loguru                        | 日志      |
 | tqdm                          | 进度条     |
 
 
