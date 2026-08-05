@@ -4,10 +4,14 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-
 import pytest
-
-from media_redact.tool.annotate_region import DEFAULT_PORT, _error_stage, _safe_url, build_init_payload, extract_video_frame
+from media_redact.tool.annotate_region import (
+    DEFAULT_PORT,
+    _error_stage,
+    _safe_url,
+    build_init_payload,
+    extract_video_frame,
+)
 
 
 def test_default_port():
@@ -31,8 +35,7 @@ def test_build_init_payload_image(tmp_path):
 
 def test_template_supports_upload_and_stream():
     template = (
-        Path(__file__).resolve().parents[1]
-        / "media_redact/tool/templates/annotate.html"
+        Path(__file__).resolve().parents[1] / "media_redact/tool/templates/annotate.html"
     ).read_text(encoding="utf-8")
     assert "btn-upload-image" in template
     assert "btn-upload-video" in template
@@ -47,7 +50,9 @@ def test_error_stage():
 
 
 def test_safe_url_redacts_password():
-    assert _safe_url("rtsp://admin:secret@192.168.1.1/stream") == "rtsp://admin:***@192.168.1.1/stream"
+    assert (
+        _safe_url("rtsp://admin:secret@192.168.1.1/stream") == "rtsp://admin:***@192.168.1.1/stream"
+    )
 
 
 def test_extract_rtsp_local_connect_error():

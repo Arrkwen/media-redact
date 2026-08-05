@@ -29,9 +29,7 @@ def parse_model_input_size(model_path: str | Path, session) -> tuple[int, int]:
 
     dims = model.graph.input[0].type.tensor_type.shape.dim
     if len(dims) != 4:
-        raise ValueError(
-            f"Expected NCHW input, got {len(dims)} dims in {model_path}"
-        )
+        raise ValueError(f"Expected NCHW input, got {len(dims)} dims in {model_path}")
 
     height = _dim_to_int(dims[2].dim_value or dims[2].dim_param)
     width = _dim_to_int(dims[3].dim_value or dims[3].dim_param)
@@ -84,9 +82,7 @@ def preprocess_bgr(
     if fmt not in {"bgr", "rgb", "gray"}:
         raise ValueError(f"Unsupported image_format: {image_format}")
 
-    res_img, ratio, (dw, dh) = letterbox(
-        ori_img, (input_height, input_width), scaleup=False
-    )
+    res_img, ratio, (dw, dh) = letterbox(ori_img, (input_height, input_width), scaleup=False)
 
     if fmt == "rgb":
         model_input = cv2.cvtColor(res_img, cv2.COLOR_BGR2RGB)
@@ -138,9 +134,7 @@ def postprocess_detection_outputs(
     if not boxes:
         return []
 
-    nms_indices = cv2.dnn.NMSBoxes(
-        boxes, scores, confidence_thres, iou_thres, eta=0.5, top_k=300
-    )
+    nms_indices = cv2.dnn.NMSBoxes(boxes, scores, confidence_thres, iou_thres, eta=0.5, top_k=300)
 
     detections: list[dict] = []
     for idx in nms_indices:
@@ -209,9 +203,7 @@ def postprocess_multiscale_outputs(
     if not boxes:
         return []
 
-    nms_indices = cv2.dnn.NMSBoxes(
-        boxes, scores, confidence_thres, iou_thres, eta=0.5, top_k=300
-    )
+    nms_indices = cv2.dnn.NMSBoxes(boxes, scores, confidence_thres, iou_thres, eta=0.5, top_k=300)
 
     detections: list[dict] = []
     for idx in nms_indices:

@@ -66,16 +66,12 @@ class MaskRegion:
         cx = sum(point[0] for point in self.polygon) / len(self.polygon)
         cy = sum(point[1] for point in self.polygon) / len(self.polygon)
         scaled = [
-            (int(cx + (x - cx) * factor), int(cy + (y - cy) * factor))
-            for x, y in self.polygon
+            (int(cx + (x - cx) * factor), int(cy + (y - cy) * factor)) for x, y in self.polygon
         ]
         return MaskRegion(polygon=scaled, score=self.score, label=self.label)
 
     def clip(self, width: int, height: int) -> MaskRegion:
-        clipped = [
-            (max(0, min(width - 1, x)), max(0, min(height - 1, y)))
-            for x, y in self.polygon
-        ]
+        clipped = [(max(0, min(width - 1, x)), max(0, min(height - 1, y))) for x, y in self.polygon]
         return MaskRegion(polygon=clipped, score=self.score, label=self.label)
 
 

@@ -80,9 +80,7 @@ def _collect_files(
 
         file_type = get_file_type(str(path))
         if file_type != media_kind:
-            raise ValueError(
-                f"Expected {media_kind} input, got {file_type or 'unknown'}: {path}"
-            )
+            raise ValueError(f"Expected {media_kind} input, got {file_type or 'unknown'}: {path}")
         files.append(path.resolve())
         roots.append(path.parent.resolve())
 

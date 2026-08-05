@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from media_redact.paths import (
     DATA_DIR,
     DEFAULT_FACE_MODEL,

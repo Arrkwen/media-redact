@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from media_redact.config import MaskMode, MaskShape, RedactConfig
 from media_redact.detect.face import FaceDetector
 from media_redact.detect.osd import RegionOSDDetector
@@ -43,9 +41,7 @@ def create_processor(
     face_detector = None
     if config.face_enabled:
         if not DEFAULT_FACE_MODEL.exists():
-            raise FileNotFoundError(
-                f"Face model not found: {DEFAULT_FACE_MODEL}"
-            )
+            raise FileNotFoundError(f"Face model not found: {DEFAULT_FACE_MODEL}")
         face_detector = FaceDetector(
             DEFAULT_FACE_MODEL,
             score_threshold=config.face_threshold,

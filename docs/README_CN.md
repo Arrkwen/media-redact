@@ -254,6 +254,10 @@ uv run media-region assets/data/frame.jpg
 
 # 运行测试
 uv run pytest
+
+# 代码风格检查
+uv run ruff check media_redact tests
+uv run ruff format --check media_redact tests
 ```
 
 激活虚拟环境后也可直接使用命令：
@@ -274,6 +278,8 @@ pytest
 | `uv sync --group dev`     | 同步生产 + 开发依赖  |
 | `uv run media-redact ...` | 在项目环境中运行 CLI |
 | `uv run pytest`           | 运行测试         |
+| `uv run ruff check .`     | 代码风格检查       |
+| `uv run ruff format .`    | 自动格式化代码      |
 | `uv add <package>`        | 添加依赖         |
 | `uv lock`                 | 更新锁文件        |
 
@@ -302,11 +308,20 @@ media-redact/
     └── ROADMAP.md          # 版本规划与开发路线
 ```
 
+### 代码风格（Ruff）
+
+项目使用 [Ruff](https://docs.astral.sh/ruff/) 做 lint 与格式化：
+
+```bash
+uv run ruff check media_redact tests      # 检查
+uv run ruff check --fix media_redact tests  # 自动修复
+uv run ruff format media_redact tests     # 格式化
+```
+
 ### 添加依赖
 
 ```bash
 uv add requests
-uv add --group dev ruff
 ```
 
 ---

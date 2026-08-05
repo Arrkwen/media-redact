@@ -5,7 +5,6 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pytest
-
 from media_redact.api import (
     _collect_files,
     _common_root,
@@ -105,10 +104,12 @@ def test_redact_image_batch_preserves_tree(tmp_path, monkeypatch):
         recursive=True,
         face=True,
     )
-    assert results == sorted([
-        (output_dir / "a" / "one_redacted.jpg").resolve(),
-        (output_dir / "b" / "two_redacted.jpg").resolve(),
-    ])
+    assert results == sorted(
+        [
+            (output_dir / "a" / "one_redacted.jpg").resolve(),
+            (output_dir / "b" / "two_redacted.jpg").resolve(),
+        ]
+    )
     assert all(path.exists() for path in results)
 
 

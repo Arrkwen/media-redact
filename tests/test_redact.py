@@ -1,11 +1,10 @@
 import numpy as np
 import pytest
-
+from media_redact.config import RedactConfig
 from media_redact.detect.base import MaskRegion
 from media_redact.detect.osd import RegionOSDDetector, parse_osd_region
 from media_redact.mask.applicator import apply_masks
 from media_redact.pipeline.processor import RedactProcessor
-from media_redact.config import RedactConfig
 
 
 def test_mask_region_scale_and_clip():

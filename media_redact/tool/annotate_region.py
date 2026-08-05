@@ -125,7 +125,20 @@ def _encode_frame_jpeg(frame) -> tuple[bytes, int, int]:
 
 def _classify_ffmpeg_error(stderr: str) -> str:
     text = stderr.lower()
-    if any(token in text for token in ("connection refused", "connection timed out", "timed out", "unable to open", "404 not found", "401 unauthorized", "403 forbidden", "no route to host", "network is unreachable")):
+    if any(
+        token in text
+        for token in (
+            "connection refused",
+            "connection timed out",
+            "timed out",
+            "unable to open",
+            "404 not found",
+            "401 unauthorized",
+            "403 forbidden",
+            "no route to host",
+            "network is unreachable",
+        )
+    ):
         return "connect"
     return "decode"
 
@@ -143,7 +156,10 @@ def extract_stream_frame_ffmpeg(
         if time_sec is not None and time_sec > 0:
             cmd.extend(["-ss", str(time_sec)])
         cmd.extend(["-i", url, "-frames:v", "1", "-q:v", "2", str(out_path)])
-        LOGGER.debug("ffmpeg extract frame: %s", " ".join(_safe_url(part) if part == url else part for part in cmd))
+        LOGGER.debug(
+            "ffmpeg extract frame: %s",
+            " ".join(_safe_url(part) if part == url else part for part in cmd),
+        )
         started = time.monotonic()
         try:
             result = subprocess.run(
@@ -181,9 +197,17 @@ def extract_stream_frame_ffmpeg(
 
         frame = cv2.imread(str(out_path))
         if frame is None:
-            LOGGER.warning("ffmpeg produced invalid image url=%s elapsed=%.1fs", _safe_url(url), elapsed)
+            LOGGER.warning(
+                "ffmpeg produced invalid image url=%s elapsed=%.1fs", _safe_url(url), elapsed
+            )
             raise ValueError("Stream decode failed: ffmpeg output is not a valid image")
-        LOGGER.info("ffmpeg frame ok url=%s elapsed=%.1fs size=%sx%s", _safe_url(url), elapsed, frame.shape[1], frame.shape[0])
+        LOGGER.info(
+            "ffmpeg frame ok url=%s elapsed=%.1fs size=%sx%s",
+            _safe_url(url),
+            elapsed,
+            frame.shape[1],
+            frame.shape[0],
+        )
         return _encode_frame_jpeg(frame)
 
 
@@ -209,7 +233,11 @@ def extract_video_frame(
 
     capture = _open_video_capture(source)
     if not capture.isOpened():
-        LOGGER.debug("OpenCV cannot open source=%s elapsed=%.1fs", safe if stream_like else source, time.monotonic() - started)
+        LOGGER.debug(
+            "OpenCV cannot open source=%s elapsed=%.1fs",
+            safe if stream_like else source,
+            time.monotonic() - started,
+        )
         if rtsp_like:
             LOGGER.info("fallback to ffmpeg for RTSP/RTMP url=%s", safe)
             return extract_stream_frame_ffmpeg(source, time_sec=time_sec)
@@ -226,12 +254,19 @@ def extract_video_frame(
         ok, frame = capture.read()
         elapsed = time.monotonic() - started
         if not ok or frame is None:
-            LOGGER.debug("OpenCV read failed ok=%s source=%s elapsed=%.1fs", ok, safe if stream_like else source, elapsed)
+            LOGGER.debug(
+                "OpenCV read failed ok=%s source=%s elapsed=%.1fs",
+                ok,
+                safe if stream_like else source,
+                elapsed,
+            )
             if rtsp_like:
                 LOGGER.info("fallback to ffmpeg after OpenCV read failure url=%s", safe)
                 return extract_stream_frame_ffmpeg(source, time_sec=time_sec)
             if stream_like:
-                raise ValueError(f"Stream decode failed: connected but cannot read frame from {source}")
+                raise ValueError(
+                    f"Stream decode failed: connected but cannot read frame from {source}"
+                )
             raise ValueError("Cannot read frame from video")
         LOGGER.info(
             "OpenCV frame ok source=%s elapsed=%.1fs size=%sx%s",
@@ -563,7 +598,13 @@ def create_handler(
                 self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
                 return
 
-            LOGGER.info("extract-frame ok filename=%s media_id=%s size=%sx%s", filename, media_id, width, height)
+            LOGGER.info(
+                "extract-frame ok filename=%s media_id=%s size=%sx%s",
+                filename,
+                media_id,
+                width,
+                height,
+            )
 
             uploads[media_id] = UploadedMedia(
                 path=dest_path,
@@ -614,14 +655,18 @@ def create_handler(
                 )
                 return
             except urllib_error.URLError as exc:
-                LOGGER.warning("proxy upstream URL error url=%s reason=%s", _safe_url(url), exc.reason)
+                LOGGER.warning(
+                    "proxy upstream URL error url=%s reason=%s", _safe_url(url), exc.reason
+                )
                 self._send_json(
                     HTTPStatus.BAD_GATEWAY,
                     {"error": f"Failed to fetch stream: {exc.reason}"},
                 )
                 return
 
-            LOGGER.debug("proxy ok url=%s bytes=%s type=%s", _safe_url(url), len(body), content_type)
+            LOGGER.debug(
+                "proxy ok url=%s bytes=%s type=%s", _safe_url(url), len(body), content_type
+            )
 
             self._send_bytes(HTTPStatus.OK, body, content_type)
 
@@ -640,8 +685,12 @@ def serve(port: int, media_path: Path | None) -> None:
         if media_path:
             LOGGER.info("Preloaded media: %s", media_path.resolve())
         else:
-            LOGGER.info("No media argument — open the page to upload image/video or connect a stream.")
-        LOGGER.info("Remote: forward this port and open the URL in your browser or VSCode Simple Browser.")
+            LOGGER.info(
+                "No media argument — open the page to upload image/video or connect a stream."
+            )
+        LOGGER.info(
+            "Remote: forward this port and open the URL in your browser or VSCode Simple Browser."
+        )
         try:
             webbrowser.open(url)
         except Exception:

@@ -254,6 +254,10 @@ uv run media-region assets/data/frame.jpg
 
 # Tests
 uv run pytest
+
+# Lint
+uv run ruff check media_redact tests
+uv run ruff format --check media_redact tests
 ```
 
 After activating the virtual environment:
@@ -274,6 +278,8 @@ pytest
 | `uv sync --group dev`     | Sync production + dev dependencies           |
 | `uv run media-redact ...` | Run CLI in the project environment           |
 | `uv run pytest`           | Run tests                                    |
+| `uv run ruff check .`     | Lint code                                    |
+| `uv run ruff format .`    | Format code                                  |
 | `uv add <package>`        | Add a dependency                             |
 | `uv lock`                 | Update the lockfile                          |
 
@@ -302,11 +308,20 @@ media-redact/
     └── ROADMAP.md          # Roadmap
 ```
 
+### Code Style (Ruff)
+
+This project uses [Ruff](https://docs.astral.sh/ruff/) for linting and formatting:
+
+```bash
+uv run ruff check media_redact tests      # lint
+uv run ruff check --fix media_redact tests  # auto-fix
+uv run ruff format media_redact tests     # format
+```
+
 ### Adding Dependencies
 
 ```bash
 uv add requests
-uv add --group dev ruff
 ```
 
 ---

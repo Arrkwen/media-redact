@@ -42,8 +42,7 @@ def resolve_input_path(path: str | Path) -> Path:
         return assets_candidate.resolve()
 
     raise FileNotFoundError(
-        f"Input file not found: {p} "
-        f"(searched: {cwd_candidate}, {assets_candidate})"
+        f"Input file not found: {p} (searched: {cwd_candidate}, {assets_candidate})"
     )
 
 

@@ -15,7 +15,6 @@ from media_redact.detect.face.onnx_utils import (
     preprocess_bgr,
 )
 
-
 DEFAULT_NMS_IOU = 0.3
 
 
