@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>media-region — media-redact</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #1e1e1e;
+      --panel: #252526;
+      --border: #3c3c3c;
+      --text: #cccccc;
+      --accent: #007acc;
+      --rect: #4ec9b0;
+      --poly: #ce9178;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    header h1 {
+      font-size: 16px;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+
+    .canvas-wrap {
+      flex: 1;
+      overflow: auto;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .stage {
+      position: relative;
+      display: inline-block;
+      cursor: crosshair;
+      user-select: none;
+    }
+
+    .stage img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      -webkit-user-drag: none;
+      user-select: none;
+    }
+
+    .stage svg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    aside {
+      width: 380px;
+      border-left: 1px solid var(--border);
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .controls,
+    .output,
+    .regions,
+    .source {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .controls button,
+    header button,
+    .source button {
+      margin: 0 6px 6px 0;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      background: #333;
+      color: var(--text);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .controls button.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .controls button:hover,
+    header button:hover,
+    .source button:hover {
+      filter: brightness(1.1);
+    }
+
+    .hint {
+      font-size: 12px;
+      opacity: 0.8;
+      line-height: 1.5;
+    }
+
+    textarea,
+    input[type="text"],
+    input[type="url"] {
+      width: 100%;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      background: #1e1e1e;
+      color: #d4d4d4;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px;
+    }
+
+    textarea {
+      min-height: 140px;
+      resize: vertical;
+    }
+
+    .regions {
+      flex: 1;
+      overflow: auto;
+    }
+
+    .region-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-family: ui-monospace, monospace;
+      word-break: break-all;
+    }
+
+    .region-item button {
+      flex-shrink: 0;
+      padding: 2px 8px;
+      font-size: 11px;
+    }
+
+    .source-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .source-row input {
+      flex: 1;
+    }
+
+    .empty-state {
+      margin: auto;
+      max-width: 520px;
+      text-align: center;
+      opacity: 0.85;
+      line-height: 1.6;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    kbd {
+      background: #333;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 11px;
+    }
+
+    #media-label {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>区域标注</h1>
+    <span id="media-label">未加载媒体</span>
+    <button type="button" id="btn-copy" class="hidden">复制命令</button>
+    <button type="button" id="btn-download" class="hidden">下载 coords.txt</button>
+  </header>
+  <div class="main">
+    <div class="canvas-wrap">
+      <div id="empty-state" class="empty-state">
+        <p>请选择媒体来源：上传图片/视频，或输入视频流地址。</p>
+        <p class="hint">页面始终展示<strong>静态帧</strong>用于标注。视频与流会抽帧展示，浏览器不会播放视频。</p>
+      </div>
+      <div class="stage hidden" id="stage">
+        <img id="image" alt="annotation frame" draggable="false" />
+        <svg id="overlay"></svg>
+      </div>
+    </div>
+    <aside>
+      <div class="source">
+        <strong>媒体来源</strong>
+        <div style="margin-top:8px">
+          <button type="button" id="btn-upload-image">上传图片</button>
+          <button type="button" id="btn-upload-video">上传视频</button>
+          <input type="file" id="input-image" accept="image/*" class="hidden" />
+          <input type="file" id="input-video" accept="video/*" class="hidden" />
+        </div>
+        <div class="source-row">
+          <input type="url" id="stream-url" placeholder="视频流 URL（http/https/rtsp）" />
+          <button type="button" id="btn-stream">取帧</button>
+        </div>
+        <p id="media-status" class="hint hidden" style="margin-top:8px"></p>
+        <p class="hint" style="margin-top:10px">
+          图片直接加载；视频/流自动取第一帧展示。
+        </p>
+      </div>
+      <div class="controls hidden" id="annotate-controls">
+        <div>
+          <button type="button" class="mode active" data-mode="rect">矩形 (R)</button>
+          <button type="button" class="mode" data-mode="polygon">多边形 (P)</button>
+          <button type="button" id="btn-finish">完成多边形 (N)</button>
+        </div>
+        <div style="margin-top:8px">
+          <button type="button" id="btn-undo">撤销 (U)</button>
+          <button type="button" id="btn-clear">清空 (C)</button>
+        </div>
+        <p class="hint" style="margin-top:10px">
+          矩形：依次点击两个对角点。<br />
+          多边形：点击描点，按 <kbd>N</kbd> 或「完成多边形」结束（≥3 点）。<br />
+        </p>
+      </div>
+      <div class="regions hidden" id="regions-panel">
+        <strong>已标注区域</strong>
+        <div id="region-list"></div>
+      </div>
+      <div class="output hidden" id="output-panel">
+        <strong>media-redact 命令片段</strong>
+        <textarea id="output" readonly></textarea>
+      </div>
+    </aside>
+  </div>
+  <script>
+    let IMG_W = 0;
+    let IMG_H = 0;
+    let mediaName = "";
+    let displayUrl = null;
+    let mediaContext = null;
+    let annotateReady = false;
+
+    const emptyState = document.getElementById("empty-state");
+    const stage = document.getElementById("stage");
+    const img = document.getElementById("image");
+    const overlay = document.getElementById("overlay");
+    const output = document.getElementById("output");
+    const regionList = document.getElementById("region-list");
+    const mediaLabel = document.getElementById("media-label");
+    const annotateControls = document.getElementById("annotate-controls");
+    const regionsPanel = document.getElementById("regions-panel");
+    const outputPanel = document.getElementById("output-panel");
+    const mediaStatus = document.getElementById("media-status");
+
+    let mode = "rect";
+    let regions = [];
+    let rectPoints = [];
+    let rectPreview = null;
+    let polyPoints = [];
+
+    function revokeDisplayUrl() {
+      if (displayUrl && displayUrl.startsWith("blob:")) {
+        URL.revokeObjectURL(displayUrl);
+      }
+      displayUrl = null;
+    }
+
+    function resetRegions() {
+      regions = [];
+      rectPoints = [];
+      rectPreview = null;
+      polyPoints = [];
+      updateOutput();
+      render();
+    }
+
+    function setAnnotateVisible(visible) {
+      annotateReady = visible;
+      stage.classList.toggle("hidden", !visible);
+      emptyState.classList.toggle("hidden", visible);
+      annotateControls.classList.toggle("hidden", !visible);
+      regionsPanel.classList.toggle("hidden", !visible);
+      outputPanel.classList.toggle("hidden", !visible);
+      document.getElementById("btn-copy").classList.toggle("hidden", !visible);
+      document.getElementById("btn-download").classList.toggle("hidden", !visible);
+    }
+
+    function updateMediaStatus(message) {
+      if (!message) {
+        mediaStatus.textContent = "";
+        mediaStatus.classList.add("hidden");
+        return;
+      }
+      mediaStatus.textContent = message;
+      mediaStatus.classList.remove("hidden");
+    }
+
+    function frameDisplayName() {
+      const base = mediaName.includes(".") ? mediaName.replace(/\.[^.]+$/, "") : mediaName;
+      return `${base}_frame`;
+    }
+
+    function waitVideoEvent(video, eventName, timeoutMs) {
+      return new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          video.removeEventListener(eventName, onEvent);
+          reject(new Error("video timeout"));
+        }, timeoutMs);
+        const onEvent = () => {
+          window.clearTimeout(timer);
+          video.removeEventListener(eventName, onEvent);
+          resolve();
+        };
+        video.addEventListener(eventName, onEvent);
+      });
+    }
+
+    async function tryFrontendVideoFrame(source) {
+      const video = document.createElement("video");
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = "auto";
+
+      let blobUrl = null;
+      if (source instanceof File) {
+        blobUrl = URL.createObjectURL(source);
+        video.src = blobUrl;
+      } else {
+        video.crossOrigin = "anonymous";
+        video.src = source;
+      }
+
+      try {
+        await waitVideoEvent(video, "loadeddata", 8000);
+        if (!video.videoWidth || !video.videoHeight) {
+          throw new Error("browser decode failed");
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext("2d").drawImage(video, 0, 0);
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob((value) => {
+            if (value) resolve(value);
+            else reject(new Error("canvas encode failed"));
+          }, "image/png");
+        });
+        const url = URL.createObjectURL(blob);
+        return { url, width: canvas.width, height: canvas.height };
+      } finally {
+        video.pause();
+        video.removeAttribute("src");
+        if (blobUrl) URL.revokeObjectURL(blobUrl);
+      }
+    }
+
+    async function extractFrameViaBackend(file) {
+      const chunkSizes = [...new Set([
+        4 * 1024 * 1024,
+        16 * 1024 * 1024,
+        file.size,
+      ].filter((size) => size > 0))].sort((a, b) => a - b);
+
+      for (const size of chunkSizes) {
+        const chunk = file.slice(0, size);
+        const form = new FormData();
+        form.append("file", chunk, file.name);
+        form.append("index", "0");
+        form.append("complete", String(size >= file.size));
+
+        const response = await fetch("/api/extract-frame", { method: "POST", body: form });
+        const contentType = response.headers.get("Content-Type") || "";
+        if (response.ok && contentType.includes("image/jpeg")) {
+          return {
+            response,
+            mediaId: response.headers.get("X-Media-Id"),
+          };
+        }
+        const err = await response.json().catch(() => ({}));
+        if (err.need_more) continue;
+        throw new Error(err.error || `Extract failed (${response.status})`);
+      }
+      throw new Error("Unable to extract frame from uploaded video data");
+    }
+
+    async function applyFrontendFrame(frame) {
+      showAnnotationImage(frameDisplayName(), frame.url, frame.width, frame.height);
+    }
+
+    function showAnnotationImage(name, src, width, height) {
+      resetRegions();
+      if (displayUrl && displayUrl !== src) {
+        revokeDisplayUrl();
+      }
+      if (src.startsWith("blob:")) {
+        displayUrl = src;
+      } else {
+        displayUrl = null;
+      }
+      img.src = src;
+      IMG_W = width;
+      IMG_H = height;
+      mediaName = name;
+      mediaLabel.textContent = `${name} (${IMG_W}×${IMG_H})`;
+      setAnnotateVisible(true);
+      stage.style.cursor = "crosshair";
+      render();
+    }
+
+    async function applyFrameResponse(response) {
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Frame extract failed (${response.status})`);
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      let width = Number(response.headers.get("X-Frame-Width"));
+      let height = Number(response.headers.get("X-Frame-Height"));
+      if (!width || !height) {
+        const size = await loadImageSize(url);
+        width = size.width;
+        height = size.height;
+      }
+      showAnnotationImage(frameDisplayName(), url, width, height);
+      const mediaId = response.headers.get("X-Media-Id");
+      if (mediaId) {
+        mediaContext = { kind: "upload", id: mediaId };
+      }
+    }
+
+    async function loadBackendFrame() {
+      if (!mediaContext) return;
+
+      updateMediaStatus("正在服务端取帧…");
+      try {
+        let response;
+        if (mediaContext.kind === "file") {
+          response = await fetch("/api/file/frame?index=0");
+        } else if (mediaContext.kind === "upload") {
+          response = await fetch(`/api/media/${mediaContext.id}/frame?index=0`);
+        } else if (mediaContext.kind === "stream") {
+          response = await fetch("/api/stream/frame", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url: mediaContext.url, index: 0 }),
+          });
+        } else {
+          throw new Error("Unknown media source");
+        }
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          const stageHint = err.stage === "connect"
+            ? "（链路/连接问题：地址不可达、端口不通或鉴权失败）"
+            : err.stage === "decode"
+              ? "（解码问题：已连上但无法解析视频帧）"
+              : "";
+          throw new Error(`${err.error || `HTTP ${response.status}`}${stageHint}`);
+        }
+        await applyFrameResponse(response);
+        updateMediaStatus("");
+      } catch (error) {
+        updateMediaStatus("");
+        alert(`取帧失败：${error.message || error}`);
+      }
+    }
+
+    function loadImageSize(src) {
+      return new Promise((resolve, reject) => {
+        const probe = new Image();
+        probe.onload = () => resolve({ width: probe.naturalWidth, height: probe.naturalHeight });
+        probe.onerror = () => reject(new Error("Failed to decode image"));
+        probe.src = src;
+      });
+    }
+
+    function loadImageFile(file) {
+      mediaContext = { kind: "static" };
+      const reader = new FileReader();
+      reader.onload = () => {
+        const probe = new Image();
+        probe.onload = () => {
+          showAnnotationImage(file.name, reader.result, probe.naturalWidth, probe.naturalHeight);
+        };
+        probe.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function loadVideoFile(file) {
+      mediaName = file.name;
+
+      updateMediaStatus("正在尝试前端取帧…");
+      try {
+        const frame = await tryFrontendVideoFrame(file);
+        mediaContext = { kind: "local-video", file };
+        await applyFrontendFrame(frame);
+        updateMediaStatus("");
+        return;
+      } catch (_) {
+        /* fallback to backend */
+      }
+
+      try {
+        updateMediaStatus("前端无法解码，正在分块上传并取帧…");
+        const { response, mediaId } = await extractFrameViaBackend(file);
+        mediaContext = { kind: "upload", id: mediaId };
+        await applyFrameResponse(response);
+        updateMediaStatus("");
+      } catch (error) {
+        updateMediaStatus("");
+        alert(`视频处理失败：${error.message || error}`);
+      }
+    }
+
+    function isBackendOnlyStream(url) {
+      const lower = url.trim().toLowerCase();
+      return lower.startsWith("rtsp:") || lower.startsWith("rtmp:");
+    }
+
+    async function loadStreamUrl(rawUrl) {
+      const url = rawUrl.trim();
+      if (!url) return;
+
+      mediaName = url;
+
+      if (!isBackendOnlyStream(url)) {
+        updateMediaStatus("正在尝试前端取帧…");
+        try {
+          const frame = await tryFrontendVideoFrame(url);
+          mediaContext = { kind: "local-stream", url };
+          await applyFrontendFrame(frame);
+          updateMediaStatus("");
+          return;
+        } catch (_) {
+          /* fallback to backend */
+        }
+      } else {
+        updateMediaStatus("RTSP/RTMP 需由服务端取帧…");
+      }
+
+      mediaContext = { kind: "stream", url };
+      await loadBackendFrame();
+    }
+
+    function activeElement() {
+      return annotateReady ? img : null;
+    }
+
+    function toImageCoords(clientX, clientY) {
+      const el = activeElement();
+      if (!el || !IMG_W || !IMG_H) return { x: 0, y: 0 };
+      const rect = el.getBoundingClientRect();
+      const x = Math.round((clientX - rect.left) * (IMG_W / rect.width));
+      const y = Math.round((clientY - rect.top) * (IMG_H / rect.height));
+      return {
+        x: Math.max(0, Math.min(IMG_W - 1, x)),
+        y: Math.max(0, Math.min(IMG_H - 1, y)),
+      };
+    }
+
+    function toDisplayCoords(x, y) {
+      const el = activeElement();
+      if (!el || !IMG_W || !IMG_H) return { x: 0, y: 0 };
+      const rect = el.getBoundingClientRect();
+      return {
+        x: (x / IMG_W) * rect.width,
+        y: (y / IMG_H) * rect.height,
+      };
+    }
+
+    function formatRect(x1, y1, x2, y2) {
+      const left = Math.min(x1, x2);
+      const right = Math.max(x1, x2);
+      const top = Math.min(y1, y2);
+      const bottom = Math.max(y1, y2);
+      return `${left},${top},${right + 1},${bottom + 1}`;
+    }
+
+    function formatPolygon(points) {
+      return points.map((p) => `${p.x},${p.y}`).join(";");
+    }
+
+    function parseRect(spec) {
+      const [x1, y1, x2, y2] = spec.split(",").map(Number);
+      return { x1, y1, x2, y2 };
+    }
+
+    function parsePolygon(spec) {
+      return spec.split(";").map((pair) => {
+        const [x, y] = pair.split(",").map(Number);
+        return { x, y };
+      });
+    }
+
+    function render() {
+      if (!annotateReady || !IMG_W || !IMG_H) {
+        overlay.innerHTML = "";
+        return;
+      }
+
+      overlay.innerHTML = "";
+      const el = activeElement();
+      const rect = el.getBoundingClientRect();
+      overlay.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
+
+      regions.forEach((item) => {
+        if (item.type === "rect") {
+          const { x1, y1, x2, y2 } = parseRect(item.spec);
+          const p1 = toDisplayCoords(x1, y1);
+          const p2 = toDisplayCoords(x2 - 1, y2 - 1);
+          const box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+          box.setAttribute("x", Math.min(p1.x, p2.x));
+          box.setAttribute("y", Math.min(p1.y, p2.y));
+          box.setAttribute("width", Math.abs(p2.x - p1.x));
+          box.setAttribute("height", Math.abs(p2.y - p1.y));
+          box.setAttribute("fill", "rgba(78, 201, 176, 0.28)");
+          box.setAttribute("stroke", "#4ec9b0");
+          box.setAttribute("stroke-width", "2.5");
+          overlay.appendChild(box);
+        } else {
+          const pts = parsePolygon(item.spec)
+            .map((p) => toDisplayCoords(p.x, p.y))
+            .map((p) => `${p.x},${p.y}`)
+            .join(" ");
+          const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+          poly.setAttribute("points", pts);
+          poly.setAttribute("fill", "rgba(206, 145, 120, 0.28)");
+          poly.setAttribute("stroke", "#ce9178");
+          poly.setAttribute("stroke-width", "2.5");
+          overlay.appendChild(poly);
+        }
+      });
+
+      if (mode === "rect" && rectPoints.length === 1 && rectPreview) {
+        const p1 = rectPoints[0];
+        const p2 = rectPreview;
+        const d1 = toDisplayCoords(p1.x, p1.y);
+        const d2 = toDisplayCoords(p2.x, p2.y);
+        const box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        box.setAttribute("x", Math.min(d1.x, d2.x));
+        box.setAttribute("y", Math.min(d1.y, d2.y));
+        box.setAttribute("width", Math.abs(d2.x - d1.x));
+        box.setAttribute("height", Math.abs(d2.y - d1.y));
+        box.setAttribute("fill", "rgba(78, 201, 176, 0.12)");
+        box.setAttribute("stroke", "#4ec9b0");
+        box.setAttribute("stroke-dasharray", "6 4");
+        box.setAttribute("stroke-width", "2");
+        overlay.appendChild(box);
+      }
+
+      if (mode === "rect" && rectPoints.length) {
+        rectPoints.forEach((p) => {
+          const d = toDisplayCoords(p.x, p.y);
+          const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          c.setAttribute("cx", d.x);
+          c.setAttribute("cy", d.y);
+          c.setAttribute("r", 5);
+          c.setAttribute("fill", "#4ec9b0");
+          c.setAttribute("stroke", "#fff");
+          c.setAttribute("stroke-width", "1.5");
+          overlay.appendChild(c);
+        });
+      }
+
+      if (mode === "polygon" && polyPoints.length) {
+        polyPoints.forEach((p) => {
+          const d = toDisplayCoords(p.x, p.y);
+          const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          c.setAttribute("cx", d.x);
+          c.setAttribute("cy", d.y);
+          c.setAttribute("r", 5);
+          c.setAttribute("fill", "#ce9178");
+          c.setAttribute("stroke", "#fff");
+          c.setAttribute("stroke-width", "1.5");
+          overlay.appendChild(c);
+        });
+        if (polyPoints.length >= 2) {
+          const pts = polyPoints
+            .map((p) => toDisplayCoords(p.x, p.y))
+            .map((p) => `${p.x},${p.y}`)
+            .join(" ");
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+          line.setAttribute("points", pts);
+          line.setAttribute("fill", "rgba(206, 145, 120, 0.12)");
+          line.setAttribute("stroke", "#ce9178");
+          line.setAttribute("stroke-dasharray", "6 4");
+          line.setAttribute("stroke-width", "2");
+          overlay.appendChild(line);
+        }
+      }
+
+      regionList.innerHTML = "";
+      regions.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = "region-item";
+        row.innerHTML = `<span>${idx + 1}. ${item.spec}</span>`;
+        const btn = document.createElement("button");
+        btn.textContent = "删除";
+        btn.onclick = () => {
+          regions.splice(idx, 1);
+          updateOutput();
+          render();
+        };
+        row.appendChild(btn);
+        regionList.appendChild(row);
+      });
+
+      updateOutput();
+    }
+
+    function updateOutput() {
+      const lines = regions.map((r) => `--osd-region ${r.spec}`);
+      output.value = lines.join("\n");
+    }
+
+    function setMode(next) {
+      mode = next;
+      rectPoints = [];
+      rectPreview = null;
+      polyPoints = [];
+      document.querySelectorAll(".mode").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.mode === mode);
+      });
+      render();
+    }
+
+    stage.addEventListener("click", (e) => {
+      if (!annotateReady || e.button !== 0) return;
+      e.preventDefault();
+      const p = toImageCoords(e.clientX, e.clientY);
+      if (mode === "rect") {
+        if (rectPoints.length === 0) {
+          rectPoints.push(p);
+        } else {
+          regions.push({
+            type: "rect",
+            spec: formatRect(rectPoints[0].x, rectPoints[0].y, p.x, p.y),
+          });
+          rectPoints = [];
+          rectPreview = null;
+        }
+      } else {
+        polyPoints.push(p);
+      }
+      render();
+    });
+
+    stage.addEventListener("mousemove", (e) => {
+      if (mode !== "rect" || rectPoints.length !== 1 || !annotateReady) return;
+      rectPreview = toImageCoords(e.clientX, e.clientY);
+      render();
+    });
+
+    function finishPolygon() {
+      if (mode !== "polygon" || polyPoints.length < 3 || !annotateReady) return;
+      regions.push({ type: "polygon", spec: formatPolygon(polyPoints) });
+      polyPoints = [];
+      render();
+    }
+
+    function undo() {
+      if (mode === "rect" && rectPoints.length) {
+        rectPoints.pop();
+        rectPreview = null;
+      } else if (polyPoints.length) {
+        polyPoints.pop();
+      } else if (regions.length) {
+        regions.pop();
+      }
+      render();
+    }
+
+    document.getElementById("btn-finish").onclick = finishPolygon;
+    document.getElementById("btn-undo").onclick = undo;
+    document.getElementById("btn-clear").onclick = () => {
+      regions = [];
+      rectPoints = [];
+      rectPreview = null;
+      polyPoints = [];
+      render();
+    };
+    document.getElementById("btn-upload-image").onclick = () => document.getElementById("input-image").click();
+    document.getElementById("btn-upload-video").onclick = () => document.getElementById("input-video").click();
+    document.getElementById("input-image").onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) loadImageFile(file);
+      e.target.value = "";
+    };
+    document.getElementById("input-video").onchange = (e) => {
+      const file = e.target.files[0];
+      if (file) loadVideoFile(file);
+      e.target.value = "";
+    };
+    document.getElementById("btn-stream").onclick = () => loadStreamUrl(document.getElementById("stream-url").value);
+    document.getElementById("stream-url").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") loadStreamUrl(e.target.value);
+    });
+
+    document.querySelectorAll(".mode").forEach((btn) => {
+      btn.onclick = () => setMode(btn.dataset.mode);
+    });
+
+    document.getElementById("btn-copy").onclick = async () => {
+      await navigator.clipboard.writeText(output.value);
+    };
+
+    document.getElementById("btn-download").onclick = () => {
+      const blob = new Blob([output.value + "\n"], { type: "text/plain" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "osd_regions.txt";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    };
+
+    window.addEventListener("keydown", (e) => {
+      if (!annotateReady) return;
+      const key = e.key.toLowerCase();
+      if (key === "r") setMode("rect");
+      if (key === "p") setMode("polygon");
+      if (key === "n") finishPolygon();
+      if (key === "u") undo();
+      if (key === "c") {
+        regions = [];
+        rectPoints = [];
+        rectPreview = null;
+        polyPoints = [];
+        render();
+      }
+    });
+
+    window.addEventListener("resize", render);
+    img.addEventListener("load", render);
+    img.addEventListener("dragstart", (e) => e.preventDefault());
+    stage.addEventListener("dragstart", (e) => e.preventDefault());
+
+    async function bootstrap() {
+      try {
+        const response = await fetch("/api/init");
+        const data = await response.json();
+        const media = data.media;
+        if (!media) return;
+
+        if (media.type === "image") {
+          mediaContext = { kind: "static" };
+          const probe = new Image();
+          probe.onload = () => {
+            showAnnotationImage(
+              media.name,
+              media.url,
+              media.width || probe.naturalWidth,
+              media.height || probe.naturalHeight,
+            );
+          };
+          probe.src = media.url;
+        } else {
+          mediaContext = { kind: "file" };
+          mediaName = media.name;
+          await loadBackendFrame();
+        }
+      } catch (error) {
+        console.warn("Failed to load initial media", error);
+      }
+    }
+
+    bootstrap();
+  </script>
+</body>
+
+</html>

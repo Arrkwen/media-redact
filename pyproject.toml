@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "media-redact"
+version = "0.1.0"
+description = "Face and OSD redaction for images and videos"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "opencv-python-headless",
+    "onnx",
+    "onnxruntime<=1.19",
+    "imageio[ffmpeg]",
+    "tqdm",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+]
+
+[project.scripts]
+media-redact = "media_redact.cli:main"
+media-region = "media_redact.tool.annotate_region:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["media_redact*"]
+
+[tool.setuptools.package-data]
+media_redact = ["models/*.onnx"]
+"media_redact.tool" = ["templates/*.html"]
+
+[[tool.uv.index]]
+name = "tsinghua"
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
