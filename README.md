@@ -95,21 +95,21 @@ usage: media-redact [-h] [-o OUTPUT]
 ```
 
 
-| Option             | Default   | Description                                                         |
-| ------------------ | --------- | ------------------------------------------------------------------- |
-| `input`            | —         | Input image or video path                                           |
-| `-o, --output`     | see below | Output path; default `{stem}_redacted{ext}`                         |
-| `--face`           | false     | Enable face redaction (bundled `media_redact/models/face_det.onnx`) |
-| `--face-threshold` | 0.3       | Face detection confidence threshold                                 |
-| `--osd`            | false     | Enable OSD region redaction (requires `--osd-region`)               |
-| `--osd-region`     | —         | OSD region(s) in absolute pixel coordinates; repeatable             |
-| `--mask`           | mosaic    | Mask mode: blur / mosaic / solid / none                             |
-| `--mask-shape`     | polygon   | Region shape: ellipse / polygon                                     |
-| `--mask-scale`     | 1.3       | Face region expansion factor                                        |
-| `--mosaic-size`    | 20        | Mosaic block size                                                   |
-| `--keep-audio` | false | Preserve original audio for video |
-| `--disable-progress` | false | Disable frame and batch file progress bars |
-| `--log-level` | INFO | Log level (DEBUG / INFO / WARNING / ERROR) |
+| Option               | Default   | Description                                                         |
+| -------------------- | --------- | ------------------------------------------------------------------- |
+| `input`              | —         | Input image or video path                                           |
+| `-o, --output`       | see below | Output path; default `{stem}_redacted{ext}`                         |
+| `--face`             | false     | Enable face redaction (bundled `media_redact/models/face_det.onnx`) |
+| `--face-threshold`   | 0.3       | Face detection confidence threshold                                 |
+| `--osd`              | false     | Enable OSD region redaction (requires `--osd-region`)               |
+| `--osd-region`       | —         | OSD region(s) in absolute pixel coordinates; repeatable             |
+| `--mask`             | mosaic    | Mask mode: blur / mosaic / solid / none                             |
+| `--mask-shape`       | polygon   | Region shape: ellipse / polygon                                     |
+| `--mask-scale`       | 1.3       | Face region expansion factor                                        |
+| `--mosaic-size`      | 20        | Mosaic block size                                                   |
+| `--keep-audio`       | false     | Preserve original audio for video                                   |
+| `--disable-progress` | false     | Disable frame and batch file progress bars                          |
+| `--log-level`        | INFO      | Log level (DEBUG / INFO / WARNING / ERROR)                          |
 
 
 ### OSD Region Format
@@ -330,19 +330,20 @@ Uses the same **GitHub Actions + PyPI Trusted Publishing** flow as (workflow nam
 
 **One-time setup (PyPI + GitHub):**
 
-1. PyPI → **Publishing** → **Add a new pending publisher**
-   - PyPI project name: `media-redact`
-   - Owner / Repository: your GitHub org/user and repo
-   - Workflow name: `publish.yml`
-   - Environment name: `media-redact-publisher`
-2. GitHub repo → **Settings** → **Environments** → create `media-redact-publisher` (no manual token; Trusted Publishing handles auth)
+1. Open **account-level** Trusted Publishing (not inside an existing project):
+  [https://pypi.org/manage/account/publishing/](https://pypi.org/manage/account/publishing/)
+2. Use **Create a new pending publisher** and fill in:
+  - **PyPI project name**: `media-redact` (must match `pyproject.toml` `name` exactly)
+  - **Owner / Repository**: your GitHub repo
+  - **Workflow name**: `publish.yml`
+  - **Environment name**: `media-redact-publisher`
 
 **Release steps:**
 
 1. Bump `version` in `pyproject.toml` and `__version__` in `media_redact/__init__.py`
 2. Commit and push to `main`
 3. Create a **Published** GitHub Release with a matching tag (e.g. `v0.2.0` or `0.2.0`)
-4. [`.github/workflows/publish.yml`](.github/workflows/publish.yml) builds and uploads to PyPI
+4. `[.github/workflows/publish.yml](.github/workflows/publish.yml)` builds and uploads to PyPI
 
 You can also run **Actions → media-redact-publisher → Run workflow** manually.
 
@@ -360,8 +361,8 @@ ls dist/
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 
 - **v0.1** (current): Face detection + fixed-region OSD + image/video CLI
-- **v0.2**: Python API, batch processing, GPU inference
-- **v0.3**: OCR-based OSD text detection
+- **v0.2**: Python API, batch processing
+- **v0.3**: OCR-based OSD text detection / GPU inference
 
 ## Acknowledgments
 

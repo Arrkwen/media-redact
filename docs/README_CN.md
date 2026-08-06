@@ -330,12 +330,15 @@ uv add requests
 
 **一次性配置（PyPI + GitHub）：**
 
-1. PyPI → **Publishing** → **Add a new pending publisher**
-   - PyPI project name: `media-redact`
-   - Owner / Repository: 你的 GitHub 组织或用户名与仓库名
-   - Workflow name: `publish.yml`
-   - Environment name: `media-redact-publisher`
-2. GitHub 仓库 → **Settings** → **Environments** → 新建 `media-redact-publisher`（无需手动填 Token，Trusted Publishing 自动鉴权）
+1. 打开 **账号级** Trusted Publishing 页面（不是某个已有项目里的 Settings）  
+   https://pypi.org/manage/account/publishing/
+2. 找到 **Create a new pending publisher** / **Add a new pending publisher**，填写：
+   - **PyPI project name**：`media-redact`（必须与 `pyproject.toml` 的 `name` **完全一致**，连字符不能写成下划线）
+   - **Owner / Repository**：你的 GitHub 仓库（如 `yourname/media-redact`）
+   - **Workflow name**：`publish.yml`
+   - **Environment name**：`media-redact-publisher`
+3. GitHub 仓库 → **Settings** → **Environments** → 新建 `media-redact-publisher` 代码中如果添加.githun/workflows会自动创建
+
 
 **发版步骤：**
 
