@@ -24,25 +24,25 @@ This will:
 
 ## Resources
 
-Models live under `media_redact/model/` and are **not shipped in the wheel**. Missing assets are downloaded on first use:
+Runtime models are cached under **`~/.media_redact/models/`** by default (override with `MEDIA_REDACT_MODEL_ROOT`). They are **not shipped in the wheel**; missing assets are downloaded on first use:
 
 | Asset | Source |
 | ----- | ------ |
-| `face_det.onnx` | GitHub repo (`media_redact/model/face_det.onnx`) |
+| `face_det.onnx` | GitHub repo (`assets/models/face_det.onnx`) |
 | OCR (`text_det.onnx`, `text_rec.onnx`, `ppocrv5_dict.txt`) | ModelScope (RapidOCR) |
 
-Only `face_det.onnx` is tracked in git (for GitHub raw downloads). OCR files are gitignored and fetched automatically.
+`assets/models/face_det.onnx` is tracked in git as the upstream source. OCR files are fetched automatically into the user cache directory.
 
 Optional test data lives under `assets/data/` at the repo root:
 
 ```bash
-media_redact/
-└── model/
-    ├── face_det.onnx      # Face model (in git; auto-downloaded for pip installs)
-    └── text_*.onnx        # OCR (auto-downloaded, not in git)
-
 assets/
+├── models/
+│   └── face_det.onnx      # Face model source (in git)
+├── media/                 # README demo images
 └── data/                  # Sample inputs (optional, not packaged)
+
+~/.media_redact/models/    # Default runtime cache (auto-created)
 ```
 
 Prefetch all models:
@@ -114,7 +114,7 @@ media-redact/
 │   │   └── osd/            # OSD detection
 │   ├── mask/               # Masking effects
 │   ├── pipeline/           # Image/video pipeline
-│   ├── model/              # ONNX models (auto-downloaded; not in wheel)
+│   ├── model/              # Model download helpers (not runtime cache)
 │   ├── tool/               # media-region annotator
 │   └── cli.py              # CLI entry point
 ├── assets/
@@ -203,7 +203,7 @@ Uses the same **GitHub Actions + PyPI Trusted Publishing** flow (workflow name: 
 
 **Release steps:**
 
-1. Bump `version` in `pyproject.toml` and `__version__` in `media_redact/__init__.py`
+1. Bump `version` in `pyproject.toml`
 2. Commit and push to `main`
 3. Create a **Published** GitHub Release with a matching tag (e.g. `v0.2.0` or `0.2.0`)
 4. `[.github/workflows/publish.yml](../.github/workflows/publish.yml)` builds and uploads to PyPI

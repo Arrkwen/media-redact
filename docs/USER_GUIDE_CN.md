@@ -44,13 +44,8 @@ media-redact --version
 media-region --help
 ```
 
-人脸模型（`face_det.onnx`）与 OCR 资源位于 `media_redact/model/`，**首次使用时自动下载**（不随 wheel 打包）。也可预先下载：
+人脸模型（`face_det.onnx`）与 OCR 资源默认缓存在 **`~/.media_redact/models/`**，**首次使用时自动下载**（不随 wheel 打包）。可通过环境变量 `MEDIA_REDACT_MODEL_ROOT` 覆盖路径。
 
-```bash
-python scripts/download_models.py          # 全部模型
-python scripts/download_models.py --face   # 仅人脸
-python scripts/download_models.py --ocr    # 仅 OCR
-```
 
 ## 快速上手
 

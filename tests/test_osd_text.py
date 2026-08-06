@@ -16,7 +16,7 @@ from media_redact.detect.osd.text_filter import TextFilterConfig, TextRegionFilt
 from media_redact.detect.osd.text_preprocess import TextDetPreprocess
 from media_redact.detect.osd.text_rec_postprocess import CTCLabelDecode
 from media_redact.factory import create_processor
-from media_redact.paths import DEFAULT_TEXT_DET_MODEL, DEFAULT_TEXT_DICT, DEFAULT_TEXT_REC_MODEL
+from media_redact.paths import default_text_det_model, default_text_dict, default_text_rec_model
 
 
 def test_parse_osd_band():
@@ -179,9 +179,10 @@ def test_text_region_filter_pattern_match():
 
 
 def test_ctc_decoder_loads_dict():
-    if not DEFAULT_TEXT_DICT.exists():
+    dict_path_obj = default_text_dict()
+    if not dict_path_obj.exists():
         pytest.skip("ppocrv5_dict.txt not downloaded")
-    decoder = CTCLabelDecode(DEFAULT_TEXT_DICT)
+    decoder = CTCLabelDecode(dict_path_obj)
     assert "blank" in decoder.character
     assert len(decoder.character) > 1000
 
@@ -207,9 +208,9 @@ def test_build_osd_detector_osd_text_keeps_fixed_region_mask(tmp_path, monkeypat
         def recognize(self, crops):
             return [("x", 1.0) for _ in crops]
 
-    monkeypatch.setattr("media_redact.detect.osd.factory.paths.DEFAULT_TEXT_DET_MODEL", det_path)
-    monkeypatch.setattr("media_redact.detect.osd.factory.paths.DEFAULT_TEXT_REC_MODEL", rec_path)
-    monkeypatch.setattr("media_redact.detect.osd.factory.paths.DEFAULT_TEXT_DICT", dict_path)
+    monkeypatch.setattr("media_redact.detect.osd.factory.paths.default_text_det_model", lambda: det_path)
+    monkeypatch.setattr("media_redact.detect.osd.factory.paths.default_text_rec_model", lambda: rec_path)
+    monkeypatch.setattr("media_redact.detect.osd.factory.paths.default_text_dict", lambda: dict_path)
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
         lambda _path, model_label=None: FakeDetSession(),
@@ -321,14 +322,14 @@ def test_composite_osd_detector_merges_region_and_text():
 
 def test_create_processor_osd_band_requires_det_model(tmp_path, monkeypatch):
     missing = tmp_path / "missing.onnx"
-    monkeypatch.setattr("media_redact.paths.DEFAULT_TEXT_DET_MODEL", missing)
+    monkeypatch.setattr("media_redact.paths.default_text_det_model", lambda: missing)
     with pytest.raises(FileNotFoundError, match="Text detection model"):
         create_processor(osd_bands=["bottom:0.12"])
 
 
 def test_create_processor_osd_text_requires_models(tmp_path, monkeypatch):
     missing = tmp_path / "missing.onnx"
-    monkeypatch.setattr("media_redact.paths.DEFAULT_TEXT_DET_MODEL", missing)
+    monkeypatch.setattr("media_redact.paths.default_text_det_model", lambda: missing)
     with pytest.raises(FileNotFoundError, match="Text detection model"):
         create_processor(osd_text=[r"\d+"])
 
@@ -407,7 +408,11 @@ def test_text_osd_detector_rec_and_pattern_filter(tmp_path, monkeypatch):
 
 
 @pytest.mark.skipif(
-    not (DEFAULT_TEXT_DET_MODEL.exists() and DEFAULT_TEXT_REC_MODEL.exists() and DEFAULT_TEXT_DICT.exists()),
+    not (
+        default_text_det_model().exists()
+        and default_text_rec_model().exists()
+        and default_text_dict().exists()
+    ),
     reason="OCR models not downloaded",
 )
 def test_text_osd_detector_end_to_end_blank():
@@ -415,9 +420,9 @@ def test_text_osd_detector_end_to_end_blank():
 
     try:
         detector = TextOSDDetector(
-            det_model_path=DEFAULT_TEXT_DET_MODEL,
-            rec_model_path=DEFAULT_TEXT_REC_MODEL,
-            dict_path=DEFAULT_TEXT_DICT,
+            det_model_path=default_text_det_model(),
+            rec_model_path=default_text_rec_model(),
+            dict_path=default_text_dict(),
             bands=[parse_osd_band("bottom:0.2")],
             pattern_filter=TextRegionFilter(TextFilterConfig(patterns=[r".*"])),
         )

@@ -1,4 +1,4 @@
-"""按需下载 ONNX 模型与字典到 ``media_redact/model/``。"""
+"""按需下载 ONNX 模型与字典到用户模型缓存目录。"""
 
 from media_redact.model.assets import (
     ensure_face_model,

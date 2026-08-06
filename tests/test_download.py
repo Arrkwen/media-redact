@@ -2,13 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from media_redact.model.assets import FACE_ASSET, ensure_model
+from media_redact.model.assets import _face_asset, ensure_model
 
 
 def test_ensure_model_returns_existing(tmp_path, monkeypatch):
     target = tmp_path / "face_det.onnx"
     target.write_bytes(b"onnx")
-    asset = FACE_ASSET.__class__(
+    asset = _face_asset().__class__(
         path=target,
         url="http://example.invalid/model.onnx",
         label="test model",
@@ -23,7 +23,7 @@ def test_ensure_model_returns_existing(tmp_path, monkeypatch):
 
 def test_ensure_model_raises_for_custom_missing_path(tmp_path, monkeypatch):
     target = tmp_path / "missing.onnx"
-    asset = FACE_ASSET.__class__(
+    asset = _face_asset().__class__(
         path=target,
         url="http://example.invalid/model.onnx",
         label="test model",
@@ -34,16 +34,16 @@ def test_ensure_model_raises_for_custom_missing_path(tmp_path, monkeypatch):
 
 
 def test_ensure_model_downloads_to_managed_dir(monkeypatch, tmp_path):
-    model_dir = tmp_path / "model"
+    model_dir = tmp_path / "models"
     model_dir.mkdir()
     target = model_dir / "face_det.onnx"
-    asset = FACE_ASSET.__class__(
+    asset = _face_asset().__class__(
         path=target,
         url="http://example.invalid/model.onnx",
         label="test model",
     )
 
-    monkeypatch.setattr("media_redact.model.assets.MODEL_DIR", model_dir)
+    monkeypatch.setattr("media_redact.paths.get_model_dir", lambda: model_dir)
 
     def fake_download(url, dest):
         Path(dest).write_bytes(b"downloaded")

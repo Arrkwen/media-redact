@@ -38,9 +38,9 @@ def build_osd_detector(
             else None
         )
         text_detector = TextOSDDetector(
-            det_model_path=text_det_model_path or paths.DEFAULT_TEXT_DET_MODEL,
-            rec_model_path=text_rec_model_path or paths.DEFAULT_TEXT_REC_MODEL,
-            dict_path=text_dict_path or paths.DEFAULT_TEXT_DICT,
+            det_model_path=text_det_model_path or paths.default_text_det_model(),
+            rec_model_path=text_rec_model_path or paths.default_text_rec_model(),
+            dict_path=text_dict_path or paths.default_text_dict(),
             bands=band_specs,
             score_threshold=osd_text_threshold,
             box_threshold=osd_text_box_threshold,

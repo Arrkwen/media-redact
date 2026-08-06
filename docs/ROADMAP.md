@@ -40,9 +40,8 @@ media-redact/
 │   │       └── composite.py
 │   ├── mask/               # 打码（blur/mosaic/solid）
 │   ├── pipeline/           # 图片/视频流水线
-│   ├── model/              # ONNX 模型（按需下载，不打进 wheel）
-│   │   ├── face_det.onnx
-│   │   └── text_det.onnx   # PP-OCRv5_mobile_det
+│   ├── model/              # 模型下载逻辑（运行时缓存不在此目录）
+│   │   └── （运行时缓存：~/.media_redact/models/）
 │   ├── tool/               # media-region 区域标注
 │   └── io/                 # 读写工具
 ├── assets/

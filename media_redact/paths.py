@@ -2,18 +2,40 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent
 
-MODEL_DIR = PACKAGE_ROOT / "model"
-DEFAULT_FACE_MODEL = MODEL_DIR / "face_det.onnx"
-DEFAULT_TEXT_DET_MODEL = MODEL_DIR / "text_det.onnx"
-DEFAULT_TEXT_REC_MODEL = MODEL_DIR / "text_rec.onnx"
-DEFAULT_TEXT_DICT = MODEL_DIR / "ppocrv5_dict.txt"
+MODEL_ROOT_ENV = "MEDIA_REDACT_MODEL_ROOT"
+DEFAULT_MODEL_SUBDIR = Path(".media_redact") / "models"
 
 DATA_DIR = PROJECT_ROOT / "assets" / "data"
+
+
+def get_model_dir() -> Path:
+    """返回模型缓存目录，默认 ``~/.media_redact/models/``。"""
+    override = os.environ.get(MODEL_ROOT_ENV)
+    if override:
+        return Path(override).expanduser().resolve()
+    return (Path.home() / DEFAULT_MODEL_SUBDIR).resolve()
+
+
+def default_face_model() -> Path:
+    return get_model_dir() / "face_det.onnx"
+
+
+def default_text_det_model() -> Path:
+    return get_model_dir() / "text_det.onnx"
+
+
+def default_text_rec_model() -> Path:
+    return get_model_dir() / "text_rec.onnx"
+
+
+def default_text_dict() -> Path:
+    return get_model_dir() / "ppocrv5_dict.txt"
 
 
 def resolve_path(path: str | Path) -> Path:

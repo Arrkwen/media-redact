@@ -44,13 +44,8 @@ media-redact --version
 media-region --help
 ```
 
-The face model (`face_det.onnx`) and OCR assets are stored under `media_redact/model/` and **downloaded automatically on first use** (not bundled in the wheel). To prefetch:
+The face model (`face_det.onnx`) and OCR assets are cached under **`~/.media_redact/models/`** by default and **downloaded automatically on first use** (not bundled in the wheel). Override the location with `MEDIA_REDACT_MODEL_ROOT`.
 
-```bash
-python scripts/download_models.py          # all models
-python scripts/download_models.py --face   # face only
-python scripts/download_models.py --ocr    # OCR only
-```
 
 ## Quick Start
 

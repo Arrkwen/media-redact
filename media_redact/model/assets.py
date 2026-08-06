@@ -6,17 +6,17 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
+from media_redact import paths as path_utils
 from media_redact.log import logger
 from media_redact.paths import (
-    DEFAULT_FACE_MODEL,
-    DEFAULT_TEXT_DET_MODEL,
-    DEFAULT_TEXT_DICT,
-    DEFAULT_TEXT_REC_MODEL,
-    MODEL_DIR,
+    default_face_model,
+    default_text_det_model,
+    default_text_dict,
+    default_text_rec_model,
 )
 
 _GITHUB_RAW_BASE = (
-    "https://github.com/Arrkwen/media-redact/raw/main/media_redact/model"
+    "https://github.com/Arrkwen/media-redact/raw/main/assets/models"
 )
 _RAPIDOCR_BASE = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2"
 
@@ -28,38 +28,48 @@ class ModelAsset:
     label: str
 
 
-FACE_ASSET = ModelAsset(
-    DEFAULT_FACE_MODEL,
-    f"{_GITHUB_RAW_BASE}/face_det.onnx",
-    "face detection model",
-)
-TEXT_DET_ASSET = ModelAsset(
-    DEFAULT_TEXT_DET_MODEL,
-    f"{_RAPIDOCR_BASE}/onnx/PP-OCRv5/det/ch_PP-OCRv5_det_mobile.onnx",
-    "text detection model",
-)
-TEXT_REC_ASSET = ModelAsset(
-    DEFAULT_TEXT_REC_MODEL,
-    f"{_RAPIDOCR_BASE}/onnx/PP-OCRv5/rec/ch_PP-OCRv5_rec_mobile.onnx",
-    "text recognition model",
-)
-TEXT_DICT_ASSET = ModelAsset(
-    DEFAULT_TEXT_DICT,
-    f"{_RAPIDOCR_BASE}/paddle/PP-OCRv5/rec/ch_PP-OCRv5_rec_mobile/ppocrv5_dict.txt",
-    "OCR dictionary",
-)
+def _face_asset() -> ModelAsset:
+    return ModelAsset(
+        default_face_model(),
+        f"{_GITHUB_RAW_BASE}/face_det.onnx",
+        "face detection model",
+    )
+
+
+def _text_det_asset() -> ModelAsset:
+    return ModelAsset(
+        default_text_det_model(),
+        f"{_RAPIDOCR_BASE}/onnx/PP-OCRv5/det/ch_PP-OCRv5_det_mobile.onnx",
+        "text detection model",
+    )
+
+
+def _text_rec_asset() -> ModelAsset:
+    return ModelAsset(
+        default_text_rec_model(),
+        f"{_RAPIDOCR_BASE}/onnx/PP-OCRv5/rec/ch_PP-OCRv5_rec_mobile.onnx",
+        "text recognition model",
+    )
+
+
+def _text_dict_asset() -> ModelAsset:
+    return ModelAsset(
+        default_text_dict(),
+        f"{_RAPIDOCR_BASE}/paddle/PP-OCRv5/rec/ch_PP-OCRv5_rec_mobile/ppocrv5_dict.txt",
+        "OCR dictionary",
+    )
 
 
 def _is_managed_path(path: Path) -> bool:
     try:
-        path.resolve().relative_to(MODEL_DIR.resolve())
+        path.resolve().relative_to(path_utils.get_model_dir().resolve())
         return True
     except ValueError:
         return False
 
 
 def ensure_model(asset: ModelAsset) -> Path:
-    """若本地已有则返回路径；仅在默认 model 目录下缺失时自动下载。"""
+    """若本地已有则返回路径；仅在模型缓存目录下缺失时自动下载。"""
     path = asset.path
     if path.exists() and path.stat().st_size > 0:
         return path
@@ -77,19 +87,19 @@ def ensure_model(asset: ModelAsset) -> Path:
 
 
 def ensure_face_model() -> Path:
-    return ensure_model(FACE_ASSET)
+    return ensure_model(_face_asset())
 
 
 def ensure_text_det_model() -> Path:
-    return ensure_model(TEXT_DET_ASSET)
+    return ensure_model(_text_det_asset())
 
 
 def ensure_text_rec_model() -> Path:
-    return ensure_model(TEXT_REC_ASSET)
+    return ensure_model(_text_rec_asset())
 
 
 def ensure_text_dict() -> Path:
-    return ensure_model(TEXT_DICT_ASSET)
+    return ensure_model(_text_dict_asset())
 
 
 def ensure_ocr_models(*, require_rec: bool = False) -> None:
