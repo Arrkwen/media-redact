@@ -7,7 +7,7 @@ Face and on-screen overlay (OSD) redaction for images and videos.
 
 | Original frame | Redact output |
 | -------------- | ------------- |
-| Original frame | Redact output |
+| ![Original frame](assets/media/demo.jpg) | ![Redact output](assets/media/demo_redact.jpg) |
 
 
 ## Publish
