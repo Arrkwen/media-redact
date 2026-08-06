@@ -122,6 +122,28 @@ usage: media-redact [-h] [-o OUTPUT]
 | Rectangle | `--osd-region 19,993,480,1079`                 | `x1,y1,x2,y2` (pixels)  |
 | Polygon   | `--osd-region 0,972;1920,972;1920,1080;0,1080` | Points separated by `;` |
 
+You can **mix** rectangles and polygons in one run—repeat `--osd-region` on the CLI or pass an `osd_regions` list in Python:
+
+```bash
+# CLI: one polygon + one rectangle
+media-redact image.jpg --osd \
+  --osd-region "1138,430;1137,541;959,547;957,660;1257,673;1255,434" \
+  --osd-region "27,613,276,679"
+```
+
+```python
+# Python API
+redact_image(
+    "image.jpg",
+    "out.jpg",
+    osd=True,
+    osd_regions=[
+        "1138,430;1137,541;959,547;957,660;1257,673;1255,434",  # polygon
+        "27,613,276,679",                                          # rectangle
+    ],
+)
+```
+
 
 > **Note**: Coordinates are tied to the input image/video resolution. Re-specify regions when the resolution changes.
 
@@ -129,7 +151,7 @@ Mask shape is controlled by `--mask-shape` (default: `polygon`; also supports `e
 
 ### Region Annotator (`media-region`)
 
-When coordinates are unknown, use the web UI to draw rectangles or polygons and copy `--osd-region` values (default: `http://127.0.0.1:8765`):
+When coordinates are unknown, use the web UI to draw rectangles or polygons and copy CLI or Python API snippets (default: `http://127.0.0.1:8765`):
 
 ```bash
 # Start the annotator (upload image/video or enter a stream URL in the page)
@@ -155,9 +177,10 @@ media-region --log-level DEBUG
 | Polygon / `P`        | Click vertices                                                               |
 | Finish polygon / `N` | Close current polygon (≥3 points)                                            |
 | Undo / `U`           | Undo last action                                                             |
-| Clear / `C`          | Clear all regions                                                            |
-| Copy command         | Copy `--osd-region` snippet                                                  |
-| Download coords.txt  | Export coordinates file                                                      |
+| Clear / `C`          | Clear all regions (avoid Ctrl+C—it triggers clear)                           |
+| Copy CLI             | Copy `media-redact` command snippet                                          |
+| Copy API             | Copy Python `redact_image()` call snippet                                    |
+| Download coords.txt  | Export CLI and API snippets                                                  |
 
 
 Use the copied parameters with `--osd` in `media-redact`.

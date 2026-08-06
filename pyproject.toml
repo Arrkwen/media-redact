@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "media-redact"
-version = "0.2.0"
+version = "0.2.1"
 description = "Face and OSD redaction for images and videos"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
-    "opencv-python-headless",
+    "numpy>=1.26,<2",
+    "opencv-python-headless>=4.8,<5",
     "onnx",
-    "onnxruntime<=1.19",
+    "onnxruntime>=1.16",
     "imageio[ffmpeg]",
     "loguru",
     "tqdm",

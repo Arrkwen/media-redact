@@ -157,20 +157,18 @@ def _run_redact(
 
     if batch_mode and not disable_progress:
         file_bar = tqdm.tqdm(
-            pairs,
+            total=len(pairs),
             desc=f"Redacting {label}",
             unit="file",
             dynamic_ncols=True,
         )
-        iterator = file_bar
 
     results: list[Path] = []
     try:
         for index, (input_file, output_file) in enumerate(iterator, start=1):
-            if batch_mode:
-                logger.info("[{}/{}] {}", index, len(input_files), input_file)
-            else:
-                logger.info("Processing {}", input_file)
+            if file_bar is not None:
+                file_bar.set_description(f"Redacting {label} ({index}/{len(input_files)})")
+                file_bar.refresh()
 
             output_file.parent.mkdir(parents=True, exist_ok=True)
             if media_kind == "image":
@@ -185,7 +183,8 @@ def _run_redact(
                     progress_position=1 if batch_mode and not disable_progress else None,
                 )
             results.append(output_file)
-            logger.success("Saved {}", output_file)
+            if file_bar is not None:
+                file_bar.update(1)
     finally:
         if file_bar is not None:
             file_bar.close()

@@ -145,8 +145,42 @@
     }
 
     textarea {
-      min-height: 140px;
+      min-height: 100px;
       resize: vertical;
+    }
+
+    .output-block + .output-block {
+      margin-top: 12px;
+    }
+
+    .output-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .output-header button {
+      margin: 0;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      background: #333;
+      color: var(--text);
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+
+    .output-header button:hover {
+      filter: brightness(1.1);
+    }
+
+    .copy-hint {
+      font-size: 11px;
+      opacity: 0.75;
+      margin-top: 8px;
     }
 
     .regions {
@@ -213,7 +247,6 @@
   <header>
     <h1>区域标注</h1>
     <span id="media-label">未加载媒体</span>
-    <button type="button" id="btn-copy" class="hidden">复制命令</button>
     <button type="button" id="btn-download" class="hidden">下载 coords.txt</button>
   </header>
   <div class="main">
@@ -265,8 +298,21 @@
         <div id="region-list"></div>
       </div>
       <div class="output hidden" id="output-panel">
-        <strong>media-redact 命令片段</strong>
-        <textarea id="output" readonly></textarea>
+        <div class="output-block">
+          <div class="output-header">
+            <strong>CLI 命令片段</strong>
+            <button type="button" id="btn-copy-cli">复制</button>
+          </div>
+          <textarea id="output-cli" readonly></textarea>
+        </div>
+        <div class="output-block">
+          <div class="output-header">
+            <strong>Python API</strong>
+            <button type="button" id="btn-copy-api">复制</button>
+          </div>
+          <textarea id="output-api" readonly></textarea>
+        </div>
+        <p class="copy-hint">请使用上方「复制」按钮；画布快捷键 <kbd>C</kbd> 会清空标注，勿用 Ctrl+C。</p>
       </div>
     </aside>
   </div>
@@ -282,7 +328,8 @@
     const stage = document.getElementById("stage");
     const img = document.getElementById("image");
     const overlay = document.getElementById("overlay");
-    const output = document.getElementById("output");
+    const outputCli = document.getElementById("output-cli");
+    const outputApi = document.getElementById("output-api");
     const regionList = document.getElementById("region-list");
     const mediaLabel = document.getElementById("media-label");
     const annotateControls = document.getElementById("annotate-controls");
@@ -319,7 +366,6 @@
       annotateControls.classList.toggle("hidden", !visible);
       regionsPanel.classList.toggle("hidden", !visible);
       outputPanel.classList.toggle("hidden", !visible);
-      document.getElementById("btn-copy").classList.toggle("hidden", !visible);
       document.getElementById("btn-download").classList.toggle("hidden", !visible);
     }
 
@@ -746,9 +792,42 @@
       updateOutput();
     }
 
+    function buildCliSnippet() {
+      if (!regions.length) return "";
+      const flags = regions.map((r) => `--osd-region ${r.spec}`);
+      return `media-redact INPUT --osd \\\n  ${flags.join(" \\\n  ")}`;
+    }
+
+    function buildApiSnippet() {
+      if (!regions.length) return "";
+      const specs = regions.map((r) => `        "${r.spec}",`).join("\n");
+      return [
+        "from media_redact import redact_image",
+        "",
+        "redact_image(",
+        '    "INPUT",',
+        '    "OUTPUT",',
+        "    osd=True,",
+        "    osd_regions=[",
+        specs,
+        "    ],",
+        ")",
+      ].join("\n");
+    }
+
     function updateOutput() {
-      const lines = regions.map((r) => `--osd-region ${r.spec}`);
-      output.value = lines.join("\n");
+      outputCli.value = buildCliSnippet();
+      outputApi.value = buildApiSnippet();
+    }
+
+    async function copyText(text, button) {
+      if (!text) return;
+      await navigator.clipboard.writeText(text);
+      const original = button.textContent;
+      button.textContent = "已复制";
+      window.setTimeout(() => {
+        button.textContent = original;
+      }, 1200);
     }
 
     function setMode(next) {
@@ -838,12 +917,23 @@
       btn.onclick = () => setMode(btn.dataset.mode);
     });
 
-    document.getElementById("btn-copy").onclick = async () => {
-      await navigator.clipboard.writeText(output.value);
+    document.getElementById("btn-copy-cli").onclick = async (e) => {
+      await copyText(outputCli.value, e.currentTarget);
+    };
+
+    document.getElementById("btn-copy-api").onclick = async (e) => {
+      await copyText(outputApi.value, e.currentTarget);
     };
 
     document.getElementById("btn-download").onclick = () => {
-      const blob = new Blob([output.value + "\n"], { type: "text/plain" });
+      const content = [
+        "# CLI",
+        buildCliSnippet(),
+        "",
+        "# Python API",
+        buildApiSnippet(),
+      ].join("\n");
+      const blob = new Blob([content + "\n"], { type: "text/plain" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = "osd_regions.txt";
@@ -858,7 +948,7 @@
       if (key === "p") setMode("polygon");
       if (key === "n") finishPolygon();
       if (key === "u") undo();
-      if (key === "c") {
+      if (key === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         regions = [];
         rectPoints = [];
         rectPreview = null;

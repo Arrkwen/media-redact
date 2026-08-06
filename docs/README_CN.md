@@ -122,6 +122,28 @@ usage: media-redact [-h] [-o OUTPUT]
 | 矩形  | `--osd-region 19,993,480,1079`                 | `x1,y1,x2,y2`（像素） |
 | 多边形 | `--osd-region 0,972;1920,972;1920,1080;0,1080` | 点用 `;` 分隔         |
 
+同一命令或 API 调用中可**混用**矩形与多边形，多次指定 `--osd-region` 或传入 `osd_regions` 列表即可：
+
+```bash
+# CLI：一个多边形 + 一个矩形
+media-redact image.jpg --osd \
+  --osd-region "1138,430;1137,541;959,547;957,660;1257,673;1255,434" \
+  --osd-region "27,613,276,679"
+```
+
+```python
+# Python API
+redact_image(
+    "image.jpg",
+    "out.jpg",
+    osd=True,
+    osd_regions=[
+        "1138,430;1137,541;959,547;957,660;1257,673;1255,434",  # 多边形
+        "27,613,276,679",                                          # 矩形
+    ],
+)
+```
+
 
 > **注意**：坐标与输入视频/图片分辨率绑定。换分辨率需重新指定区域。
 
@@ -129,7 +151,7 @@ usage: media-redact [-h] [-o OUTPUT]
 
 ### 区域标注工具（`media-region`）
 
-不确定坐标时，可用 Web 界面在浏览器中画框/多边形，复制 `--osd-region` 参数（默认 `http://127.0.0.1:8765`）：
+不确定坐标时，可用 Web 界面在浏览器中画框/多边形，复制 CLI 命令或 Python API 片段（默认 `http://127.0.0.1:8765`）：
 
 ```bash
 # 启动标注服务（页内可上传图片/视频或输入流地址）
@@ -155,9 +177,10 @@ media-region --log-level DEBUG
 | 多边形模式 / `P`   | 点击描点                            |
 | 完成多边形 / `N`   | 结束当前多边形（≥3 点）                   |
 | 撤销 / `U`      | 撤销                              |
-| 清空 / `C`      | 清空全部                            |
-| 复制命令          | 复制 `--osd-region` 片段            |
-| 下载 coords.txt | 导出坐标文件                          |
+| 清空 / `C`      | 清空全部（勿用 Ctrl+C，会误触发）         |
+| 复制 CLI        | 复制 `media-redact` 命令片段          |
+| 复制 API        | 复制 Python `redact_image` 调用片段   |
+| 下载 coords.txt | 导出 CLI 与 API 片段                  |
 
 
 标注完成后，将复制的参数与 `--osd` 一起用于 `media-redact` 即可。
