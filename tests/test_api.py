@@ -133,7 +133,6 @@ def test_redact_image_multiple_files(tmp_path, monkeypatch):
     results = redact_image(
         [input_a, input_b],
         output_dir=output_dir,
-        osd=True,
         osd_regions=["0,0,1,1"],
     )
     assert results == [

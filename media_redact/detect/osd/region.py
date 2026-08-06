@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from media_redact.detect.base import MaskRegion
+from media_redact.log import logger
 
 
 @dataclass
@@ -64,6 +65,15 @@ def _parse_polygon_pairs(parts: list[str]) -> list[tuple[int, int]]:
     return polygon
 
 
+def _region_fully_inside(region: OSDRegion, width: int, height: int) -> bool:
+    """区域是否完全落在图像范围内。"""
+    if region.polygon is not None:
+        mask_region = MaskRegion.from_polygon(region.polygon, label=region.name)
+    else:
+        mask_region = MaskRegion.from_rect(region.rect, label=region.name)  # type: ignore[arg-type]
+    return mask_region.fully_inside(width, height)
+
+
 class RegionOSDDetector:
     """根据区域定义生成 OSD 打码区域。"""
 
@@ -83,15 +93,23 @@ class RegionOSDDetector:
         h, w = image.shape[:2]
         regions: list[MaskRegion] = []
         for region in self.config.regions:
+            if not _region_fully_inside(region, w, h):
+                logger.debug(
+                    "Skip OSD region {}: outside image bounds {}x{}",
+                    region.name,
+                    w,
+                    h,
+                )
+                continue
             if region.polygon is not None:
                 mask_region = MaskRegion.from_polygon(
                     region.polygon,
                     label=region.name,
-                ).clip(w, h)
+                )
             else:
                 mask_region = MaskRegion.from_rect(
                     region.rect,  # type: ignore[arg-type]
                     label=region.name,
-                ).clip(w, h)
+                )
             regions.append(mask_region)
         return regions

@@ -60,6 +60,32 @@ class MaskRegion:
         ys = [point[1] for point in self.polygon]
         return min(xs), min(ys), max(xs) + 1, max(ys) + 1
 
+    def fully_inside(self, width: int, height: int) -> bool:
+        """bbox 是否完全落在图像范围内。"""
+        x1, y1, x2, y2 = self.bounding_box()
+        return x1 >= 0 and y1 >= 0 and x2 <= width and y2 <= height
+
+    def max_uniform_scale(self, width: int, height: int) -> float:
+        """围绕多边形中心均匀放大、且仍完全落在图像内的最大倍率。"""
+        if width <= 0 or height <= 0 or len(self.polygon) < 3:
+            return 1.0
+
+        cx = sum(point[0] for point in self.polygon) / len(self.polygon)
+        cy = sum(point[1] for point in self.polygon) / len(self.polygon)
+        max_x = width - 1
+        max_y = height - 1
+        limits = [float("inf")]
+        for x, y in self.polygon:
+            if x > cx:
+                limits.append((max_x - cx) / (x - cx))
+            elif x < cx:
+                limits.append(cx / (cx - x))
+            if y > cy:
+                limits.append((max_y - cy) / (y - cy))
+            elif y < cy:
+                limits.append(cy / (cy - y))
+        return max(0.0, min(limits))
+
     def scale(self, factor: float) -> MaskRegion:
         if factor == 1.0:
             return self
@@ -69,6 +95,15 @@ class MaskRegion:
             (int(cx + (x - cx) * factor), int(cy + (y - cy) * factor)) for x, y in self.polygon
         ]
         return MaskRegion(polygon=scaled, score=self.score, label=self.label)
+
+    def scale_clamped(self, factor: float, width: int, height: int) -> MaskRegion:
+        """均匀放大，但倍率不超过图像边界允许的上限。"""
+        if factor == 1.0:
+            return self
+        effective = min(factor, self.max_uniform_scale(width, height))
+        if effective <= 0:
+            return self
+        return self.scale(effective)
 
     def clip(self, width: int, height: int) -> MaskRegion:
         clipped = [(max(0, min(width - 1, x)), max(0, min(height - 1, y))) for x, y in self.polygon]

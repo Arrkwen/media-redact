@@ -8,7 +8,7 @@ import numpy as np
 from media_redact.config import RedactConfig
 from media_redact.detect.base import MaskRegion
 from media_redact.detect.face import FaceDetector
-from media_redact.detect.osd import RegionOSDDetector
+from media_redact.detect.osd import OSDDetector
 from media_redact.mask.applicator import apply_masks
 
 
@@ -19,7 +19,7 @@ class RedactProcessor:
         self,
         config: RedactConfig,
         face_detector: FaceDetector | None = None,
-        osd_detector: RegionOSDDetector | None = None,
+        osd_detector: OSDDetector | None = None,
     ) -> None:
         self.config = config
         self.face_detector = face_detector

@@ -9,6 +9,9 @@ PROJECT_ROOT = PACKAGE_ROOT.parent
 
 MODELS_DIR = PACKAGE_ROOT / "models"
 DEFAULT_FACE_MODEL = MODELS_DIR / "face_det.onnx"
+DEFAULT_TEXT_DET_MODEL = MODELS_DIR / "text_det.onnx"
+DEFAULT_TEXT_REC_MODEL = MODELS_DIR / "text_rec.onnx"
+DEFAULT_TEXT_DICT = MODELS_DIR / "ppocrv5_dict.txt"
 
 DATA_DIR = PROJECT_ROOT / "assets" / "data"
 
@@ -23,15 +26,15 @@ def resolve_path(path: str | Path) -> Path:
 
 def resolve_input_path(path: str | Path) -> Path:
     """
-    解析输入文件路径。
+    解析输入路径（文件或目录）。
 
     查找顺序：绝对路径 → 当前工作目录 → assets/data/
     """
     p = Path(path)
     if p.is_absolute():
         if p.exists():
-            return p
-        raise FileNotFoundError(f"Input file not found: {p}")
+            return p.resolve()
+        raise FileNotFoundError(f"Input not found: {p}")
 
     cwd_candidate = Path.cwd() / p
     if cwd_candidate.exists():
@@ -42,7 +45,7 @@ def resolve_input_path(path: str | Path) -> Path:
         return assets_candidate.resolve()
 
     raise FileNotFoundError(
-        f"Input file not found: {p} (searched: {cwd_candidate}, {assets_candidate})"
+        f"Input not found: {p} (searched: {cwd_candidate}, {assets_candidate})"
     )
 
 

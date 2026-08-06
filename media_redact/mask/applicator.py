@@ -26,7 +26,9 @@ def apply_masks(
     """对 frame 就地打码（支持 RGB 或 BGR）。"""
     h, w = frame.shape[:2]
     for region in regions:
-        scaled = region.scale(mask_scale).clip(w, h)
+        scaled = region.scale_clamped(mask_scale, w, h)
+        if not scaled.fully_inside(w, h):
+            continue
         if len(scaled.polygon) < 3:
             continue
         _apply_single(

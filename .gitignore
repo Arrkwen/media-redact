@@ -8,6 +8,4 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
-assets/data/*
-!assets/data/.gitkeep
 Makefile

@@ -3,4 +3,4 @@
 from media_redact.api import redact_image, redact_video
 
 __all__ = ["__version__", "redact_image", "redact_video"]
-__version__ = "0.2.1"
+__version__ = "0.3.0"

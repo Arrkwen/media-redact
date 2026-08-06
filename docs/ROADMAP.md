@@ -22,6 +22,8 @@
 
 ```
 输入帧 → [人脸检测] + [OSD 检测] → 合并 bbox → 统一打码 → 输出
+                      ├─ 固定区域 (RegionOSDDetector)
+                      └─ 文字检测 (TextOSDDetector, PP-OCRv5_mobile_det)
 ```
 
 ```
@@ -31,9 +33,16 @@ media-redact/
 │   │   ├── base.py         # 公共 BBox
 │   │   ├── face/           # 人脸检测
 │   │   └── osd/            # OSD 检测
+│   │       ├── region.py   # 固定区域
+│   │       ├── text_detector.py
+│   │       ├── db_postprocess.py
+│   │       ├── bands.py
+│   │       └── composite.py
 │   ├── mask/               # 打码（blur/mosaic/solid）
 │   ├── pipeline/           # 图片/视频流水线
 │   ├── models/             # ONNX 模型
+│   │   ├── face_det.onnx
+│   │   └── text_det.onnx   # PP-OCRv5_mobile_det
 │   ├── tool/               # media-region 区域标注
 │   └── io/                 # 读写工具
 ├── assets/
@@ -43,54 +52,57 @@ media-redact/
 
 ## OSD 策略
 
-### Phase 1 — 固定区域（已实现 v0.1）
+### Phase 1 — 固定区域（v0.1）
 
 通过坐标 ROI，适用于行车记录仪、监控摄像头等 OSD 位置固定的场景。
 
 - 零推理开销，稳定无漏检
 
-### Phase 2 — 文字检测（待实现）
+### Phase 2 — 文字检测（v0.3）
 
-- 模型：PaddleOCR det-only / DBNet ONNX
-- 限域：仅上下 band 区域，减少误检
-- 不做 OCR 识别，只要文字框
+- 模型：**PP-OCRv5_mobile_det** ONNX（`text_det.onnx`）
+- 限域：通过 `--osd-band` 或配合 `--osd-region` 过滤检测框
 
-### Phase 3 — 智能过滤（待实现）
+### Phase 3 — 识别 + 正则过滤（v0.3）
 
-- 关键词/正则确认（时间戳格式等）
-- 视频多帧时序稳定，减少闪烁
+- 模型：**PP-OCRv5_mobile_rec** ONNX（`text_rec.onnx`）+ `ppocrv5_dict.txt`
+- 流程：full-image det → (band filter if set) → OCR → text regex
+- [ ] 视频多帧时序稳定，减少闪烁
 
 ## 版本规划
 
-### v0.1 — 基础可用（当前）
+### v0.1 — 基础可用
 
 - [x] 项目结构与 `pyproject.toml`
-- [x] YOLO ONNX 人脸检测（简化自 `src/face_detect`）
-- [x] 打码：blur / mosaic / solid，椭圆/矩形 mask
-- [x] 固定区域 OSD（YAML 配置）
-- [x] 图片处理 CLI
-- [x] 视频处理 CLI（保留音频选项）
+- [x] YOLO ONNX 人脸检测
+- [x] 打码：blur / mosaic / solid，椭圆/多边形 mask
+- [x] 固定区域 OSD
+- [x] 图片/视频 CLI
 - [x] 基础单元测试
 
 ### v0.2 — 易用性
 
-- [x] 批量目录处理（Python API：`output_dir` + `recursive`）
+- [x] 批量目录处理（CLI：`-o` 目录 + `--recursive`；API：`output_dir` + `recursive`）
 - [x] Python API：`redact_image()` / `redact_video()`
 - [x] 进度与日志完善（loguru + 批量文件进度条）
 
 ### v0.3 — OCR OSD
 
-- [ ] PaddleOCR / DBNet 文字检测模块
-- [ ] band 限域 + 规则过滤
-- [ ] `--osd-text 支持文字正则过滤` CLI 选项
+- [x] PP-OCRv5_mobile_det 文字检测（`TextOSDDetector`）
+- [x] PP-OCRv5_mobile_rec 文字识别 + `--osd-text` 正则过滤
+- [x] band 限域 + 几何规则过滤
+- [x] CLI/API：`--osd-text`、`--osd-band`
+- [ ] 视频时序稳定
+
+> **依赖说明**：PP-OCRv5 ONNX（IR v10）需要 **onnxruntime>=1.18**（容器内开发环境通常满足）。
 
 ### v0.4 — 性能优化
 
 - [ ] GPU 推理（onnxruntime CUDA EP）
-
 - [ ] 视频人脸 tracking（跨帧复用 bbox）
 - [ ] 多线程/异步 IO
 - [ ] 分辨率自适应降采样推理
+- [ ] 文字检测隔帧推理 + 时序插值
 
 ## CLI 用法
 
@@ -98,18 +110,41 @@ media-redact/
 # 安装
 pip install -e .
 
+# 下载文字检测模型（发版前可预置到 models/text_det.onnx）
+python scripts/download_text_det_model.py
+
 # 仅人脸打码
 media-redact assets/data/input.mp4 --face -o output.mp4
 
-# 仅 OSD
-media-redact assets/data/image.jpg --osd \
+# 固定区域 OSD
+media-redact assets/data/image.jpg \
   --osd-region 0,972;1920,972;1920,1080;0,1080 --mask-shape polygon
 
-# 人脸 + OSD
-media-redact assets/data/input.mp4 --face --osd \
-  --osd-region 19,993,480,1079 \
-  --osd-region 1344,993,1901,1079
+# 下载 OCR 模型与字典
+python scripts/download_ocr_models.py
 
+# band 内文字检测（全部打码）
+media-redact assets/data/image.jpg --osd-band bottom:0.12
+
+# band + 正则 OCR（仅匹配框打码）
+media-redact assets/data/image.jpg \
+  --osd-band bottom:0.15 \
+  --osd-text '\d{4}-\d{2}-\d{2}'
+
+# 仅正则 OCR（默认上下 band）
+media-redact assets/data/image.jpg \
+  --osd-text '\d{4}-\d{2}-\d{2}' \
+  --osd-text '\d+\s*km/h'
+
+# 固定区域 + 文字 OCR
+media-redact assets/data/input.mp4 \
+  --osd-region 19,993,480,1079 \
+  --osd-text '\d{4}-\d{2}-\d{2}' \
+  --osd-band bottom:0.15
+
+# 人脸 + OCR OSD
+media-redact assets/data/input.mp4 --face \
+  --osd-text '\d{4}-\d{2}-\d{2}'
 ```
 
 ## 依赖
@@ -119,8 +154,8 @@ media-redact assets/data/input.mp4 --face --osd \
 | ----------------------------- | ------- |
 | numpy, opencv-python-headless | 图像处理    |
 | onnxruntime                   | ONNX 推理 |
+| pyclipper                     | DB 后处理 unclip |
 | imageio[ffmpeg]               | 视频读写    |
-| pyyaml                        | OSD 配置  |
 | loguru                        | 日志      |
 | tqdm                          | 进度条     |
 
@@ -131,5 +166,4 @@ media-redact assets/data/input.mp4 --face --osd \
 | 日期         | 版本   | 说明                               |
 | ---------- | ---- | -------------------------------- |
 | 2026-08-05 | v0.1 | 初始版本：人脸检测 + 固定区域 OSD + 图片/视频 CLI |
-
-
+| 2026-08-06 | v0.3 | PP-OCRv5_mobile_det 文字 OSD（Phase 2） |

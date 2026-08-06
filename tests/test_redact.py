@@ -7,6 +7,18 @@ from media_redact.mask.applicator import apply_masks
 from media_redact.pipeline.processor import RedactProcessor
 
 
+def test_mask_region_max_uniform_scale_at_corner():
+    region = MaskRegion.from_bbox(0, 0, 20, 20)
+    assert region.max_uniform_scale(100, 100) == pytest.approx(1.0)
+
+
+def test_mask_region_scale_clamped_at_corner():
+    region = MaskRegion.from_bbox(0, 0, 20, 20)
+    scaled = region.scale_clamped(1.5, 100, 100)
+    assert scaled.bounding_box() == region.bounding_box()
+    assert scaled.fully_inside(100, 100)
+
+
 def test_mask_region_scale_and_clip():
     region = MaskRegion.from_bbox(10, 10, 30, 30, score=0.9)
     scaled = region.scale(1.5).clip(100, 100)
@@ -47,12 +59,49 @@ def test_region_osd_detector_polygon():
     assert regions[0].polygon == [(0, 0), (50, 0), (50, 50), (0, 50)]
 
 
+def test_region_osd_detector_skips_out_of_bounds():
+    detector = RegionOSDDetector.from_specs(["19,993,480,1079"])
+    img = np.zeros((400, 320, 3), dtype=np.uint8)
+    assert detector.detect(img) == []
+
+
+def test_region_osd_detector_skips_partially_outside():
+    detector = RegionOSDDetector.from_specs(["0,0,200,100"])
+    img = np.zeros((100, 100, 3), dtype=np.uint8)
+    assert detector.detect(img) == []
+
+
+def test_region_osd_detector_keeps_in_bounds_mixed():
+    detector = RegionOSDDetector.from_specs(["0,0,50,50", "19,993,480,1079"])
+    img = np.zeros((100, 100, 3), dtype=np.uint8)
+    regions = detector.detect(img)
+    assert len(regions) == 1
+    assert regions[0].label == "region_0"
+
+
 def test_apply_mosaic_polygon():
     frame = np.random.randint(0, 255, (80, 80, 3), dtype=np.uint8)
     original = frame.copy()
     region = MaskRegion.from_bbox(10, 10, 50, 50)
     apply_masks(frame, [region], mode="mosaic", mask_shape="polygon", mosaic_size=10)
     assert not np.array_equal(frame[20:40, 20:40], original[20:40, 20:40])
+
+
+def test_apply_masks_skips_out_of_bounds():
+    frame = np.full((100, 100, 3), 128, dtype=np.uint8)
+    original = frame.copy()
+    region = MaskRegion.from_bbox(19, 93, 48, 107)
+    apply_masks(frame, [region], mode="solid", mask_shape="polygon")
+    assert np.array_equal(frame, original)
+
+
+def test_apply_masks_clamps_scale_at_image_edge():
+    frame = np.full((100, 100, 3), 128, dtype=np.uint8)
+    original = frame.copy()
+    region = MaskRegion.from_bbox(0, 0, 20, 20)
+    apply_masks(frame, [region], mode="solid", mask_shape="polygon", mask_scale=1.5)
+    assert not np.array_equal(frame, original)
+    assert np.all(frame[0, 0] == 0)
 
 
 def test_apply_ellipse_differs_from_polygon():

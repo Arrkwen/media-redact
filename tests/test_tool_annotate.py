@@ -39,6 +39,8 @@ def test_template_supports_upload_and_stream():
     ).read_text(encoding="utf-8")
     assert "btn-upload-image" in template
     assert "btn-upload-video" in template
+    assert 'data-mode="band"' in template
+    assert "--osd-band" in template
     assert "/api/init" in template
     assert "/api/extract-frame" in template
     assert "/api/stream/frame" in template

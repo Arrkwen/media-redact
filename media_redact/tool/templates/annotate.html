@@ -15,6 +15,7 @@
       --accent: #007acc;
       --rect: #4ec9b0;
       --poly: #ce9178;
+      --band: #569cd6;
     }
 
     * {
@@ -149,7 +150,7 @@
       resize: vertical;
     }
 
-    .output-block + .output-block {
+    .output-block+.output-block {
       margin-top: 12px;
     }
 
@@ -281,6 +282,9 @@
       <div class="controls hidden" id="annotate-controls">
         <div>
           <button type="button" class="mode active" data-mode="rect">矩形 (R)</button>
+          <button type="button" class="mode" data-mode="band">Band 线 (B)</button>
+        </div>
+        <div style="margin-top:8px">
           <button type="button" class="mode" data-mode="polygon">多边形 (P)</button>
           <button type="button" id="btn-finish">完成多边形 (N)</button>
         </div>
@@ -291,10 +295,11 @@
         <p class="hint" style="margin-top:10px">
           矩形：依次点击两个对角点。<br />
           多边形：点击描点，按 <kbd>N</kbd> 或「完成多边形」结束（≥3 点）。<br />
+          Band 线：点击线段两端（水平/垂直自动识别），生成 <code>--osd-band</code> 比例。
         </p>
       </div>
       <div class="regions hidden" id="regions-panel">
-        <strong>已标注区域</strong>
+        <strong>已标注</strong>
         <div id="region-list"></div>
       </div>
       <div class="output hidden" id="output-panel">
@@ -339,9 +344,12 @@
 
     let mode = "rect";
     let regions = [];
+    let bands = [];
     let rectPoints = [];
     let rectPreview = null;
     let polyPoints = [];
+    let bandPoints = [];
+    let bandPreview = null;
 
     function revokeDisplayUrl() {
       if (displayUrl && displayUrl.startsWith("blob:")) {
@@ -352,9 +360,12 @@
 
     function resetRegions() {
       regions = [];
+      bands = [];
       rectPoints = [];
       rectPreview = null;
       polyPoints = [];
+      bandPoints = [];
+      bandPreview = null;
       updateOutput();
       render();
     }
@@ -652,6 +663,121 @@
       };
     }
 
+    function formatRatio(value) {
+      return parseFloat(value.toFixed(4)).toString();
+    }
+
+    function bandSpecFromLine(x1, y1, x2, y2) {
+      const dx = Math.abs(x2 - x1);
+      const dy = Math.abs(y2 - y1);
+      if (dx === 0 && dy === 0) {
+        throw new Error("Band line requires two distinct points.");
+      }
+
+      let name;
+      let ratio;
+      let pos;
+      if (dx >= dy) {
+        pos = Math.round((y1 + y2) / 2);
+        if (pos <= IMG_H / 2) {
+          name = "top";
+          ratio = pos / IMG_H;
+        } else {
+          name = "bottom";
+          ratio = (IMG_H - pos) / IMG_H;
+        }
+      } else {
+        pos = Math.round((x1 + x2) / 2);
+        if (pos <= IMG_W / 2) {
+          name = "left";
+          ratio = pos / IMG_W;
+        } else {
+          name = "right";
+          ratio = (IMG_W - pos) / IMG_W;
+        }
+      }
+
+      if (!(ratio > 0 && ratio < 1)) {
+        throw new Error(`Band ratio must be between 0 and 1, got ${ratio.toFixed(4)}.`);
+      }
+      return {
+        spec: `${name}:${formatRatio(ratio)}`,
+        name,
+        ratio,
+        orientation: dx >= dy ? "horizontal" : "vertical",
+        pos,
+      };
+    }
+
+    function parseBandSpec(spec) {
+      const [name, ratioText] = spec.split(":");
+      return { name, ratio: Number(ratioText) };
+    }
+
+    function bandOverlayRect(name, ratio) {
+      if (name === "top") {
+        const h = ratio * IMG_H;
+        return { x1: 0, y1: 0, x2: IMG_W, y2: h };
+      }
+      if (name === "bottom") {
+        const h = ratio * IMG_H;
+        return { x1: 0, y1: IMG_H - h, x2: IMG_W, y2: IMG_H };
+      }
+      if (name === "left") {
+        const w = ratio * IMG_W;
+        return { x1: 0, y1: 0, x2: w, y2: IMG_H };
+      }
+      const w = ratio * IMG_W;
+      return { x1: IMG_W - w, y1: 0, x2: IMG_W, y2: IMG_H };
+    }
+
+    function drawBandOverlay(name, ratio, options = {}) {
+      const { x1, y1, x2, y2 } = bandOverlayRect(name, ratio);
+      const p1 = toDisplayCoords(x1, y1);
+      const p2 = toDisplayCoords(x2, y2);
+      const box = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      box.setAttribute("x", Math.min(p1.x, p2.x));
+      box.setAttribute("y", Math.min(p1.y, p2.y));
+      box.setAttribute("width", Math.abs(p2.x - p1.x));
+      box.setAttribute("height", Math.abs(p2.y - p1.y));
+      box.setAttribute("fill", options.fill || "rgba(86, 156, 214, 0.22)");
+      box.setAttribute("stroke", options.stroke || "#569cd6");
+      box.setAttribute("stroke-width", options.strokeWidth || "2");
+      if (options.dash) box.setAttribute("stroke-dasharray", "6 4");
+      overlay.appendChild(box);
+    }
+
+    function drawBandLine(x1, y1, x2, y2, dashed = false) {
+      const p1 = toDisplayCoords(x1, y1);
+      const p2 = toDisplayCoords(x2, y2);
+      const dx = Math.abs(x2 - x1);
+      const dy = Math.abs(y2 - y1);
+      let sx1 = x1;
+      let sy1 = y1;
+      let sx2 = x2;
+      let sy2 = y2;
+      if (dx >= dy) {
+        const y = Math.round((y1 + y2) / 2);
+        sy1 = y;
+        sy2 = y;
+      } else {
+        const x = Math.round((x1 + x2) / 2);
+        sx1 = x;
+        sx2 = x;
+      }
+      const d1 = toDisplayCoords(sx1, sy1);
+      const d2 = toDisplayCoords(sx2, sy2);
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", d1.x);
+      line.setAttribute("y1", d1.y);
+      line.setAttribute("x2", d2.x);
+      line.setAttribute("y2", d2.y);
+      line.setAttribute("stroke", "#569cd6");
+      line.setAttribute("stroke-width", dashed ? "2" : "2.5");
+      if (dashed) line.setAttribute("stroke-dasharray", "6 4");
+      overlay.appendChild(line);
+    }
+
     function formatRect(x1, y1, x2, y2) {
       const left = Math.min(x1, x2);
       const right = Math.max(x1, x2);
@@ -687,6 +813,12 @@
       const rect = el.getBoundingClientRect();
       overlay.setAttribute("viewBox", `0 0 ${rect.width} ${rect.height}`);
 
+      bands.forEach((item) => {
+        const { name, ratio } = parseBandSpec(item.spec);
+        drawBandOverlay(name, ratio);
+        drawBandLine(item.x1, item.y1, item.x2, item.y2);
+      });
+
       regions.forEach((item) => {
         if (item.type === "rect") {
           const { x1, y1, x2, y2 } = parseRect(item.spec);
@@ -714,6 +846,38 @@
           overlay.appendChild(poly);
         }
       });
+
+      if (mode === "band" && bandPoints.length === 1 && bandPreview) {
+        drawBandLine(bandPoints[0].x, bandPoints[0].y, bandPreview.x, bandPreview.y, true);
+        try {
+          const preview = bandSpecFromLine(
+            bandPoints[0].x,
+            bandPoints[0].y,
+            bandPreview.x,
+            bandPreview.y,
+          );
+          drawBandOverlay(preview.name, preview.ratio, {
+            fill: "rgba(86, 156, 214, 0.12)",
+            dash: true,
+          });
+        } catch (_) {
+          /* ignore invalid preview */
+        }
+      }
+
+      if (mode === "band" && bandPoints.length) {
+        bandPoints.forEach((p) => {
+          const d = toDisplayCoords(p.x, p.y);
+          const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+          c.setAttribute("cx", d.x);
+          c.setAttribute("cy", d.y);
+          c.setAttribute("r", 5);
+          c.setAttribute("fill", "#569cd6");
+          c.setAttribute("stroke", "#fff");
+          c.setAttribute("stroke-width", "1.5");
+          overlay.appendChild(c);
+        });
+      }
 
       if (mode === "rect" && rectPoints.length === 1 && rectPreview) {
         const p1 = rectPoints[0];
@@ -774,10 +938,24 @@
       }
 
       regionList.innerHTML = "";
+      bands.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = "region-item";
+        row.innerHTML = `<span>${idx + 1}. band ${item.spec}</span>`;
+        const btn = document.createElement("button");
+        btn.textContent = "删除";
+        btn.onclick = () => {
+          bands.splice(idx, 1);
+          updateOutput();
+          render();
+        };
+        row.appendChild(btn);
+        regionList.appendChild(row);
+      });
       regions.forEach((item, idx) => {
         const row = document.createElement("div");
         row.className = "region-item";
-        row.innerHTML = `<span>${idx + 1}. ${item.spec}</span>`;
+        row.innerHTML = `<span>${bands.length + idx + 1}. region ${item.spec}</span>`;
         const btn = document.createElement("button");
         btn.textContent = "删除";
         btn.onclick = () => {
@@ -793,26 +971,34 @@
     }
 
     function buildCliSnippet() {
-      if (!regions.length) return "";
-      const flags = regions.map((r) => `--osd-region ${r.spec}`);
-      return `media-redact INPUT --osd \\\n  ${flags.join(" \\\n  ")}`;
+      const parts = [];
+      bands.forEach((item) => parts.push(`--osd-band ${item.spec}`));
+      regions.forEach((item) => parts.push(`--osd-region ${item.spec}`));
+      if (!parts.length) return "";
+      return `media-redact INPUT \\\n  ${parts.join(" \\\n  ")}`;
     }
 
     function buildApiSnippet() {
-      if (!regions.length) return "";
-      const specs = regions.map((r) => `        "${r.spec}",`).join("\n");
-      return [
+      if (!bands.length && !regions.length) return "";
+      const lines = [
         "from media_redact import redact_image",
         "",
         "redact_image(",
         '    "INPUT",',
         '    "OUTPUT",',
-        "    osd=True,",
-        "    osd_regions=[",
-        specs,
-        "    ],",
-        ")",
-      ].join("\n");
+      ];
+      if (bands.length) {
+        lines.push("    osd_bands=[");
+        bands.forEach((item) => lines.push(`        "${item.spec}",`));
+        lines.push("    ],");
+      }
+      if (regions.length) {
+        lines.push("    osd_regions=[");
+        regions.forEach((item) => lines.push(`        "${item.spec}",`));
+        lines.push("    ],");
+      }
+      lines.push(")");
+      return lines.join("\n");
     }
 
     function updateOutput() {
@@ -835,6 +1021,8 @@
       rectPoints = [];
       rectPreview = null;
       polyPoints = [];
+      bandPoints = [];
+      bandPreview = null;
       document.querySelectorAll(".mode").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.mode === mode);
       });
@@ -856,6 +1044,30 @@
           rectPoints = [];
           rectPreview = null;
         }
+      } else if (mode === "band") {
+        if (bandPoints.length === 0) {
+          bandPoints.push(p);
+        } else {
+          try {
+            const band = bandSpecFromLine(
+              bandPoints[0].x,
+              bandPoints[0].y,
+              p.x,
+              p.y,
+            );
+            bands.push({
+              spec: band.spec,
+              x1: bandPoints[0].x,
+              y1: bandPoints[0].y,
+              x2: p.x,
+              y2: p.y,
+            });
+          } catch (error) {
+            alert(`Band 标注失败：${error.message || error}`);
+          }
+          bandPoints = [];
+          bandPreview = null;
+        }
       } else {
         polyPoints.push(p);
       }
@@ -863,9 +1075,16 @@
     });
 
     stage.addEventListener("mousemove", (e) => {
-      if (mode !== "rect" || rectPoints.length !== 1 || !annotateReady) return;
-      rectPreview = toImageCoords(e.clientX, e.clientY);
-      render();
+      if (!annotateReady) return;
+      if (mode === "rect" && rectPoints.length === 1) {
+        rectPreview = toImageCoords(e.clientX, e.clientY);
+        render();
+        return;
+      }
+      if (mode === "band" && bandPoints.length === 1) {
+        bandPreview = toImageCoords(e.clientX, e.clientY);
+        render();
+      }
     });
 
     function finishPolygon() {
@@ -879,8 +1098,13 @@
       if (mode === "rect" && rectPoints.length) {
         rectPoints.pop();
         rectPreview = null;
+      } else if (mode === "band" && bandPoints.length) {
+        bandPoints.pop();
+        bandPreview = null;
       } else if (polyPoints.length) {
         polyPoints.pop();
+      } else if (bands.length) {
+        bands.pop();
       } else if (regions.length) {
         regions.pop();
       }
@@ -891,9 +1115,12 @@
     document.getElementById("btn-undo").onclick = undo;
     document.getElementById("btn-clear").onclick = () => {
       regions = [];
+      bands = [];
       rectPoints = [];
       rectPreview = null;
       polyPoints = [];
+      bandPoints = [];
+      bandPreview = null;
       render();
     };
     document.getElementById("btn-upload-image").onclick = () => document.getElementById("input-image").click();
@@ -936,7 +1163,7 @@
       const blob = new Blob([content + "\n"], { type: "text/plain" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = "osd_regions.txt";
+      a.download = "osd_annotations.txt";
       a.click();
       URL.revokeObjectURL(a.href);
     };
@@ -946,13 +1173,17 @@
       const key = e.key.toLowerCase();
       if (key === "r") setMode("rect");
       if (key === "p") setMode("polygon");
+      if (key === "b") setMode("band");
       if (key === "n") finishPolygon();
       if (key === "u") undo();
       if (key === "c" && !e.ctrlKey && !e.metaKey && !e.altKey) {
         regions = [];
+        bands = [];
         rectPoints = [];
         rectPreview = null;
         polyPoints = [];
+        bandPoints = [];
+        bandPreview = null;
         render();
       }
     });

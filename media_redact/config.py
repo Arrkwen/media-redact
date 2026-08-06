@@ -18,6 +18,7 @@ class RedactConfig:
     mask_scale: float = 1.3
 
     osd_enabled: bool = False
+    osd_text_enabled: bool = False
 
     mosaic_size: int = 20
     keep_audio: bool = False
