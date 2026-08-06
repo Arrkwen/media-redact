@@ -202,6 +202,31 @@ media-region frame.jpg --port 9000
 ## Python API
 
 ```python
+redact_image(
+    inputs,
+    output=None,
+    *,
+    output_dir=None,
+    recursive=False,
+    face=False,
+    face_threshold=0.3,
+    osd_regions=None,
+    osd_bands=None,
+    osd_text=None,
+    osd_text_threshold=0.3,
+    osd_text_box_threshold=0.5,
+    osd_text_rec_threshold=0.0,
+    mask="mosaic",
+    mask_shape="polygon",
+    mask_scale=1.3,
+    mosaic_size=20,
+    disable_progress=False,
+)
+
+redact_video(..., keep_audio=False)  # same kwargs as redact_image
+```
+
+```python
 from media_redact import redact_image, redact_video
 
 # Single file
@@ -209,7 +234,13 @@ redact_image("photo.jpg", face=True)
 redact_image("photo.jpg", "out.jpg", face=True)
 
 # Directory batch (use output_dir; preserves layout)
-redact_image("input_dir/", output_dir="output_dir/", recursive=True, face=True)
+redact_image(
+    "input_dir/",
+    output_dir="output_dir/",
+    recursive=True,
+    face=True,
+    face_threshold=0.3,
+)
 
 # Multiple files
 redact_image(

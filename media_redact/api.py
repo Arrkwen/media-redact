@@ -47,7 +47,8 @@ def _common_root(paths: Sequence[Path]) -> Path:
         else:
             break
     if not common:
-        raise ValueError("Cannot infer a common input root for the given paths.")
+        raise ValueError(
+            "Cannot infer a common input root for the given paths.")
     return Path(*common)
 
 
@@ -80,7 +81,8 @@ def _collect_files(
 
         file_type = get_file_type(str(path))
         if file_type != media_kind:
-            raise ValueError(f"Expected {media_kind} input, got {file_type or 'unknown'}: {path}")
+            raise ValueError(
+                f"Expected {media_kind} input, got {file_type or 'unknown'}: {path}")
         files.append(path.resolve())
         roots.append(path.parent.resolve())
 
@@ -114,7 +116,8 @@ def _resolve_output_path(
         return output_root / relative.parent / _redacted_name(input_file)
 
     if not single_input:
-        raise ValueError("output_dir is required when processing multiple inputs.")
+        raise ValueError(
+            "output_dir is required when processing multiple inputs.")
 
     return default_output_path(input_file)
 
@@ -167,7 +170,8 @@ def _run_redact(
     try:
         for index, (input_file, output_file) in enumerate(iterator, start=1):
             if file_bar is not None:
-                file_bar.set_description(f"Redacting {label} ({index}/{len(input_files)})")
+                file_bar.set_description(
+                    f"Redacting {label} ({index}/{len(input_files)})")
                 file_bar.refresh()
 
             output_file.parent.mkdir(parents=True, exist_ok=True)
@@ -200,13 +204,13 @@ def redact_image(
     output_dir: str | Path | None = None,
     recursive: bool = False,
     face: bool = False,
+    face_threshold: float = 0.3,
     osd_regions: list[str] | None = None,
     osd_bands: list[str] | None = None,
+    osd_text: list[str] | None = None,
     osd_text_threshold: float = 0.3,
     osd_text_box_threshold: float = 0.5,
     osd_text_rec_threshold: float = 0.0,
-    osd_text: list[str] | None = None,
-    face_threshold: float = 0.3,
     mask: MaskMode = "mosaic",
     mask_shape: MaskShape = "polygon",
     mask_scale: float = 1.3,
@@ -275,13 +279,13 @@ def redact_video(
     output_dir: str | Path | None = None,
     recursive: bool = False,
     face: bool = False,
+    face_threshold: float = 0.3,
     osd_regions: list[str] | None = None,
     osd_bands: list[str] | None = None,
+    osd_text: list[str] | None = None,
     osd_text_threshold: float = 0.3,
     osd_text_box_threshold: float = 0.5,
     osd_text_rec_threshold: float = 0.0,
-    osd_text: list[str] | None = None,
-    face_threshold: float = 0.3,
     mask: MaskMode = "mosaic",
     mask_shape: MaskShape = "polygon",
     mask_scale: float = 1.3,
