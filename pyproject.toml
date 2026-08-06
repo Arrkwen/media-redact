@@ -34,7 +34,6 @@ where = ["."]
 include = ["media_redact*"]
 
 [tool.setuptools.package-data]
-media_redact = ["models/*.onnx", "models/*.txt"]
 "media_redact.tool" = ["templates/*.html"]
 
 [[tool.uv.index]]

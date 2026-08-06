@@ -8,4 +8,9 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+# Cached ONNX models (not shipped in wheel; auto-downloaded on first use)
+media_redact/model/*.onnx
+!media_redact/model/face_det.onnx
+media_redact/model/*.txt
+
 Makefile

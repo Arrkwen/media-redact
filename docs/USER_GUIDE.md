@@ -2,10 +2,23 @@
 
 > **中文**: [USER_GUIDE_CN.md](USER_GUIDE_CN.md)
 
+## Overview
+
+`media-redact` redacts faces and on-screen overlay (OSD) content in images and videos. Detection and masking are decoupled—enable one or more modes per run.
+
+| Mode | Flag | When to use |
+| ---- | ---- | ----------- |
+| Face redaction | `--face` | Auto-detect and redact faces |
+| Fixed OSD regions | `--osd-region` | Redact known rectangles/polygons (absolute pixel coords) |
+| Band OSD | `--osd-band` | Redact all detected text inside top/bottom/left/right bands |
+| OSD text regex | `--osd-text` | OCR + redact only boxes matching regex patterns |
+
+At least one of `--face`, `--osd-region`, `--osd-band`, or `--osd-text` must be enabled.
+
 ## Requirements
 
 - Python >= 3.10
-- ffmpeg (required for video processing; install separately and ensure it is on `PATH`)
+- ffmpeg (video processing; install separately and ensure it is on `PATH`)
 
 ## Installation
 
@@ -13,278 +26,190 @@
 pip install media-redact
 ```
 
-If the package is not yet on PyPI, install from source:
+Install from source if the package is not yet on PyPI:
 
 ```bash
-pip install /path/to/media-redact          # local directory
+pip install /path/to/media-redact
 # or
 pip install git+https://example.com/media-redact.git
 ```
 
-Two commands are provided after installation:
-
-
-| Command        | Description                                                             |
-| -------------- | ----------------------------------------------------------------------- |
-| `media-redact` | Redact images/videos                                                    |
-| `media-region` | Web region annotation; generates `--osd-region` / `--osd-band` snippets |
-
-
-Verify installation:
+| Command | Description |
+| ------- | ----------- |
+| `media-redact` | Redact images/videos |
+| `media-region` | Web annotator; generates `--osd-region` / `--osd-band` snippets |
 
 ```bash
 media-redact --version
 media-region --help
 ```
 
-Enable `--face` (faces) and/or OSD options explicitly when redacting. 
-
-
-
-## Basic Usage
+The face model (`face_det.onnx`) and OCR assets are stored under `media_redact/model/` and **downloaded automatically on first use** (not bundled in the wheel). To prefetch:
 
 ```bash
-# Face redaction only
+python scripts/download_models.py          # all models
+python scripts/download_models.py --face   # face only
+python scripts/download_models.py --ocr    # OCR only
+```
+
+## Quick Start
+
+```bash
+# Face
 media-redact video.mp4 --face
 
-# Fixed OSD region only (bottom bar polygon, 1920x1080)
-media-redact image.jpg \
-  --osd-region 0,972;1920,972;1920,1080;0,1080
+# Fixed OSD region (1080p bottom bar polygon)
+media-redact image.jpg --osd-region 0,972;1920,972;1920,1080;0,1080
 
-# Face + fixed OSD (1080p example: bottom-left timestamp regions)
-media-redact video.mp4 \
-  --face \
-  --osd-region 19,993,480,1079 \
-  --osd-region 1344,993,1901,1079
+# Band OSD (all text in bottom 12%)
+media-redact video.mp4 --osd-band bottom:0.12
 
-# Directory batch (images and videos); default output: ./{dirname}_redacted/
-media-redact photos/ --face --recursive
+# Text regex (dates only)
+media-redact video.mp4 --osd-text '\d{4}-\d{2}-\d{2}'
 
-# Directory batch with explicit output directory (preserves subdirectories)
-media-redact input_dir/ --face -o output_dir/ --recursive
+# Combine modes
+media-redact video.mp4 --face --osd-region 19,993,480,1079 --osd-band bottom:0.12
+
+# Directory batch
+media-redact photos/ --face -r
+media-redact input_dir/ --face -o output_dir/ -r
 ```
 
-Default output for a **single file**: `{filename}_redacted.{ext}` in the current working directory.
+**Output defaults**
 
-Default output for a **directory**: `{dirname}_redacted/` under the current working directory.
+| Input | Default output |
+| ----- | -------------- |
+| Single file | `./{filename}_redacted.{ext}` |
+| Directory | `./{dirname}_redacted/` (preserves subdirectory layout with `-r`) |
 
-## Redaction Pipeline
+For a single file, `-o` is an output **file**; for a directory, `-o` is an output **directory**.
 
-```
-┌─────────────────┐
-│  Input          │  image / video frame (RGB)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  CLI / API      │  create_processor() → RedactProcessor.process_frame()
-└────────┬────────┘
-         │
-         ├──────────────────┬──────────────────┬──────────────────┐
-         ▼                  ▼                  ▼                  ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ --face          │ │ --osd-region    │ │ --osd-band      │ │ --osd-text      │
-│ FaceDetector    │ │ RegionOSD       │ │ TextOSD         │ │ TextOSD         │
-│ YOLO ONNX       │ │ fixed coords    │ │ full-image det  │ │ full-image det  │
-│                 │ │ (no model)      │ │ → band filter   │ │ → band filter   │
-│                 │ │                 │ │ → all boxes     │ │    if set       │
-│                 │ │                 │ │                 │ │ → OCR → regex   │
-└────────┬────────┘ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
-         │                   │                   │                   │
-         └───────────────────┴───────────────────┴───────────────────┘
-                                     │
-                                     ▼
-                          ┌─────────────────────┐
-                          │  MaskRegion[]       │  merge; skip out-of-bounds
-                          └──────────┬──────────┘
-                                     │
-                                     ▼
-                          ┌─────────────────────┐
-                          │  apply_masks()      │  blur / mosaic / solid
-                          └──────────┬──────────┘
-                                     │
-                                     ▼
-                          ┌─────────────────────┐
-                          │  Output             │  redacted image / video
-                          └─────────────────────┘
-```
+## Redaction Modes
 
-## CLI Options
+### Face (`--face`)
 
-```
-usage: media-redact [-h] [-o OUTPUT] [-r]
-                    [--face] [--face-threshold FACE_THRESHOLD]
-                    [--osd-region SPEC] [--osd-band SPEC] [--osd-text REGEX]
-                    ...
-                    input
-```
-
-
-| Option               | Default   | Description                                                                          |
-| -------------------- | --------- | ------------------------------------------------------------------------------------ |
-| `input`              | —         | Input image/video path **or directory**                                              |
-| `-o, --output`       | see below | Output **file** (single input) or **directory** (directory input)                    |
-| `-r, --recursive`    | false     | Recursively process files in subdirectories                                          |
-| `--face`             | false     | Enable face redaction (bundled `media_redact/models/face_det.onnx`)                  |
-| `--face-threshold`   | 0.3       | Face detection confidence threshold                                                  |
-| `--osd-region`       | —         | Fixed OSD region(s) in absolute pixel coordinates; repeatable                        |
-| `--osd-band`         | —         | Text detection band (`top:0.15`, `bottom:0.12`, etc.); repeatable; filters det boxes |
-| `--osd-text`         | —         | OCR regex filter; repeatable (OR match)                                              |
-| `--mask`             | mosaic    | Mask mode: blur / mosaic / solid / none                                              |
-| `--mask-shape`       | polygon   | Region shape: ellipse / polygon                                                      |
-| `--mask-scale`       | 1.3       | Face region expansion factor (clamped to image bounds)                               |
-| `--mosaic-size`      | 20        | Mosaic block size                                                                    |
-| `--keep-audio`       | false     | Preserve original audio for video                                                    |
-| `--disable-progress` | false     | Disable frame and batch file progress bars                                           |
-| `--log-level`        | INFO      | Log level (DEBUG / INFO / WARNING / ERROR)                                           |
-
-
-## OSD Region Format
-
-`--osd-region` uses **absolute pixel coordinates**. Specify multiple regions by repeating the flag:
-
-
-| Format    | Example (1080p)                                | Notes                   |
-| --------- | ---------------------------------------------- | ----------------------- |
-| Rectangle | `--osd-region 19,993,480,1079`                 | `x1,y1,x2,y2` (pixels)  |
-| Polygon   | `--osd-region 0,972;1920,972;1920,1080;0,1080` | Points separated by `;` |
-
-
-You can **mix** rectangles and polygons in one run—repeat `--osd-region` on the CLI or pass an `osd_regions` list in Python:
+ONNX face detection with configurable mask mode and expansion:
 
 ```bash
-# CLI: one polygon + one rectangle
+media-redact video.mp4 --face --face-threshold 0.3 --mask-scale 1.3
+```
+
+### Fixed OSD regions (`--osd-region`)
+
+Redact user-defined regions in **absolute pixel coordinates**. Repeat the flag for multiple regions; rectangles and polygons can be mixed.
+
+| Format | Example (1080p) | Syntax |
+| ------ | --------------- | ------ |
+| Rectangle | `--osd-region 19,993,480,1079` | `x1,y1,x2,y2` |
+| Polygon | `--osd-region 0,972;1920,972;1920,1080;0,1080` | points separated by `;` |
+
+```bash
 media-redact image.jpg \
   --osd-region "1138,430;1137,541;959,547;957,660;1257,673;1255,434" \
   --osd-region "27,613,276,679"
 ```
 
-```python
-# Python API
-redact_image(
-    "image.jpg",
-    "out.jpg",
-    osd_regions=[
-        "1138,430;1137,541;959,547;957,660;1257,673;1255,434",  # polygon
-        "27,613,276,679",                                          # rectangle
-    ],
-)
-```
+Coordinates are tied to input resolution. Regions fully outside the image are **skipped** (not clipped). Shape is controlled by `--mask-shape` (`polygon` default, or `ellipse`).
 
-> **Note**: Coordinates are tied to the input image/video resolution. Regions fully outside the image bounds are skipped (not clipped).
+### Band OSD (`--osd-band`)
 
-Mask shape is controlled by `--mask-shape` (default: `polygon`; also supports `ellipse`).
+Full-image text detection, then keep boxes whose center falls in the specified bands. **All remaining boxes are redacted** (no OCR).
 
-## OCR Text OSD (`--osd-band` / `--osd-text`)
-
-PP-OCRv5 text detection/recognition without manual coordinates. Download OCR models first:
+| Band | Example | Ratio relative to |
+| ---- | ------- | ----------------- |
+| Top / bottom | `top:0.15`, `bottom:0.12` | image height |
+| Left / right | `left:0.08`, `right:0.08` | image width |
 
 ```bash
-python scripts/download_ocr_models.py
-```
-
-Both **--osd-band** and **--osd-text** support **repeatable flags** (same as `--osd-region`)—pass a list for multiple bands or regex patterns:
-
-
-| Option       | Format                                                  | Notes                                                                |
-| ------------ | ------------------------------------------------------- | -------------------------------------------------------------------- |
-| `--osd-band` | `top:0.15` / `bottom:0.12` / `left:0.08` / `right:0.08` | Top/bottom ratios use image height; left/right use width; repeatable |
-| `--osd-text` | Python regex                                            | Enables OCR; redacts only matching boxes; repeatable (**OR** match)  |
-
-
-```bash
-# Redact all text in multiple bands (det-only, no OCR)
 media-redact video.mp4 \
   --osd-band top:0.15 \
-  --osd-band bottom:0.12 \
-  --osd-band left:0.08
+  --osd-band bottom:0.12
+```
 
-# Multiple regex patterns (date or speed)
-media-redact video.mp4 \
-  --osd-text '\d{4}-\d{2}-\d{2}' \
-  --osd-text '\d+\s*km/h'
+### OSD text regex (`--osd-text`)
 
-# Bands + multiple patterns
+Full-image text detection → optional band filter → OCR → regex match. Only matching boxes are redacted.
+
+```bash
+# Whole frame
+media-redact video.mp4 --osd-text '\d{4}-\d{2}-\d{2}'
+
+# Limit OCR to a band
 media-redact video.mp4 \
   --osd-band bottom:0.15 \
   --osd-text '\d{4}-\d{2}-\d{2}' \
   --osd-text 'GPS[:：]\s*\d+'
 ```
 
-```python
-# Python API: pass lists of bands / patterns
-redact_video(
-    "video.mp4",
-    osd_bands=["top:0.15", "bottom:0.12", "right:0.1"],
-    osd_text=[r"\d{4}-\d{2}-\d{2}", r"\d+\s*km/h"],
-)
+Multiple `--osd-text` patterns use **OR** matching.
+
+| Configuration | Pipeline |
+| ------------- | -------- |
+| `--osd-band` only | full-image det → band filter → redact all boxes |
+| `--osd-text` | full-image det → (band filter if set) → OCR → regex → redact matches |
+| `--osd-region` only | fixed coords → redact region (no text det) |
+
+## CLI Reference
+
+```
+usage: media-redact [-h] [-o OUTPUT] [-r]
+                    [--face] [--face-threshold FACE_THRESHOLD]
+                    [--osd-region SPEC] [--osd-band SPEC] [--osd-text REGEX]
+                    [--mask {blur,mosaic,solid,none}] [--mask-shape {ellipse,polygon}]
+                    ...
+                    input
 ```
 
-
-| Mode                | Behavior                                                                      |
-| ------------------- | ----------------------------------------------------------------------------- |
-| `--osd-band` only   | Full-image det → band filter → **redact all boxes** (no OCR)                  |
-| `--osd-text`        | Full-image det → (band filter if set) → OCR → text regex → **redact matches** |
-| `--osd-region` only | Fixed coords → **redact region** (no text det)                                |
-
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `input` | — | Image/video path or directory |
+| `-o, --output` | see above | Output file (single input) or directory (directory input) |
+| `-r, --recursive` | false | Recurse into subdirectories |
+| `--face` | false | Enable face redaction |
+| `--face-threshold` | 0.3 | Face detection confidence threshold |
+| `--osd-region` | — | Fixed OSD region(s); repeatable |
+| `--osd-band` | — | Text detection band; repeatable |
+| `--osd-text` | — | OCR regex filter; repeatable (OR match) |
+| `--osd-text-threshold` | 0.3 | Text probability map threshold |
+| `--osd-text-box-threshold` | 0.5 | Text box score threshold |
+| `--osd-text-rec-threshold` | 0.0 | Minimum OCR confidence |
+| `--mask` | mosaic | `blur` / `mosaic` / `solid` / `none` |
+| `--mask-shape` | polygon | `ellipse` / `polygon` |
+| `--mask-scale` | 1.3 | Face region expansion (clamped to image bounds) |
+| `--mosaic-size` | 20 | Mosaic block size |
+| `--keep-audio` | false | Preserve original audio for video |
+| `--disable-progress` | false | Disable progress bars |
+| `--log-level` | INFO | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 
 ## Region Annotator (`media-region`)
 
-When coordinates are unknown, use the web UI to draw rectangles, polygons, or band lines and copy CLI or Python API snippets (default: `http://127.0.0.1:8765`):
+When coordinates are unknown, draw regions or band lines in a browser and copy CLI / API snippets (default: `http://127.0.0.1:8765`):
 
 ```bash
-# Start the annotator (upload image/video or enter a stream URL in the page)
-media-region
-
-# Preload an image or video
-media-region frame.jpg
-
-# Custom port (use with SSH port forwarding on remote hosts)
+media-region                  # open annotator
+media-region frame.jpg        # preload image or video
 media-region frame.jpg --port 9000
-
-# Debug RTSP/stream connectivity
-media-region --log-level DEBUG
 ```
 
-
-| Action               | Description                                                                  |
-| -------------------- | ---------------------------------------------------------------------------- |
-| Upload image         | Loaded directly in the browser                                               |
-| Upload video         | First frame extracted; browser first, then chunked upload or OpenCV fallback |
-| Stream URL           | First frame extracted; browser first, then OpenCV backend fallback           |
-| Rectangle / `R`      | Click two corners for fixed `--osd-region`                                   |
-| Polygon / `P`        | Click vertices for fixed `--osd-region`                                      |
-| Band line / `B`      | Click line endpoints to generate `--osd-band` ratios                         |
-| Finish polygon / `N` | Close current polygon (≥3 points)                                            |
-| Undo / `U`           | Undo last action                                                             |
-| Clear / `C`          | Clear all regions (avoid Ctrl+C—it triggers clear)                           |
-| Copy CLI             | Copy `media-redact` command snippet                                          |
-| Copy API             | Copy Python `redact_image()` call snippet                                    |
-| Download coords.txt  | Export CLI and API snippets                                                  |
-
-
-Use the copied parameters in `media-redact`.
+| Action | Description |
+| ------ | ----------- |
+| Rectangle / `R` | Two clicks → `--osd-region` |
+| Polygon / `P` | Vertices → `--osd-region`; finish with `N` |
+| Band line / `B` | Line endpoints → `--osd-band` ratio |
+| Undo / `U`, Clear / `C` | Undo last action / clear all |
+| Copy CLI / Copy API | Copy ready-to-run snippets |
 
 ## Python API
-
-You can also call `redact_image()` / `redact_video()` from Python. Inputs may be a single file, multiple files, or a directory (with optional recursive traversal). For batch runs, set `output_dir` as the output root—the **relative subdirectory layout is preserved**, and `_redacted` is appended to each filename.
 
 ```python
 from media_redact import redact_image, redact_video
 
-# Single image
+# Single file
 redact_image("photo.jpg", face=True)
-
-# Explicit output path
 redact_image("photo.jpg", "out.jpg", face=True)
 
-# Directory batch (recursive), preserving subdirectories
-redact_image(
-    "input_dir/",
-    output_dir="output_dir/",
-    recursive=True,
-    face=True,
-)
+# Directory batch (use output_dir; preserves layout)
+redact_image("input_dir/", output_dir="output_dir/", recursive=True, face=True)
 
 # Multiple files
 redact_image(
@@ -293,13 +218,20 @@ redact_image(
     osd_regions=["0,972;1920,972;1920,1080;0,1080"],
 )
 
-# Videos work the same way
+# Video
 redact_video(
     "input_videos/",
     output_dir="output_videos/",
     recursive=True,
     face=True,
+    osd_bands=["bottom:0.12"],
+    osd_text=[r"\d{4}-\d{2}-\d{2}"],
     keep_audio=True,
 )
 ```
 
+CLI uses `-o` for both file and directory output; the Python API uses `output` (single file) and `output_dir` (batch).
+
+## Further Reading
+
+- [Developer Guide](DEVELOPER_GUIDE.md) — project layout, pipeline diagrams, tests, and demo image generation

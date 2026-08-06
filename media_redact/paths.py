@@ -7,11 +7,11 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent
 
-MODELS_DIR = PACKAGE_ROOT / "models"
-DEFAULT_FACE_MODEL = MODELS_DIR / "face_det.onnx"
-DEFAULT_TEXT_DET_MODEL = MODELS_DIR / "text_det.onnx"
-DEFAULT_TEXT_REC_MODEL = MODELS_DIR / "text_rec.onnx"
-DEFAULT_TEXT_DICT = MODELS_DIR / "ppocrv5_dict.txt"
+MODEL_DIR = PACKAGE_ROOT / "model"
+DEFAULT_FACE_MODEL = MODEL_DIR / "face_det.onnx"
+DEFAULT_TEXT_DET_MODEL = MODEL_DIR / "text_det.onnx"
+DEFAULT_TEXT_REC_MODEL = MODEL_DIR / "text_rec.onnx"
+DEFAULT_TEXT_DICT = MODEL_DIR / "ppocrv5_dict.txt"
 
 DATA_DIR = PROJECT_ROOT / "assets" / "data"
 

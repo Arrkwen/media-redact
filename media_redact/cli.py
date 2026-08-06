@@ -40,7 +40,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--face",
         action="store_true",
-        help="Enable face redaction (uses bundled media_redact/models/face_det.onnx)",
+        help="Enable face redaction (auto-downloads face_det.onnx on first use)",
     )
     parser.add_argument(
         "--face-threshold",

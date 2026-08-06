@@ -4,7 +4,7 @@ from media_redact.paths import (
     DEFAULT_TEXT_DET_MODEL,
     DEFAULT_TEXT_DICT,
     DEFAULT_TEXT_REC_MODEL,
-    MODELS_DIR,
+    MODEL_DIR,
     PACKAGE_ROOT,
     default_output_path,
     resolve_path,
@@ -12,12 +12,12 @@ from media_redact.paths import (
 
 
 def test_asset_directories():
-    assert MODELS_DIR == PACKAGE_ROOT / "models"
+    assert MODEL_DIR == PACKAGE_ROOT / "model"
     assert DATA_DIR.name == "data"
-    assert DEFAULT_FACE_MODEL == MODELS_DIR / "face_det.onnx"
-    assert DEFAULT_TEXT_DET_MODEL == MODELS_DIR / "text_det.onnx"
-    assert DEFAULT_TEXT_REC_MODEL == MODELS_DIR / "text_rec.onnx"
-    assert DEFAULT_TEXT_DICT == MODELS_DIR / "ppocrv5_dict.txt"
+    assert DEFAULT_FACE_MODEL == MODEL_DIR / "face_det.onnx"
+    assert DEFAULT_TEXT_DET_MODEL == MODEL_DIR / "text_det.onnx"
+    assert DEFAULT_TEXT_REC_MODEL == MODEL_DIR / "text_rec.onnx"
+    assert DEFAULT_TEXT_DICT == MODEL_DIR / "ppocrv5_dict.txt"
 
 
 def test_resolve_path_relative():

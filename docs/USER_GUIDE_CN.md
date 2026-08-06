@@ -2,6 +2,19 @@
 
 > **English**: [USER_GUIDE.md](USER_GUIDE.md)
 
+## 概览
+
+`media-redact` 用于对图片与视频中的人脸及 OSD（屏幕叠加信息）打码。检测与打码解耦，每次运行可启用一种或多种模式。
+
+| 模式 | 参数 | 适用场景 |
+| ---- | ---- | -------- |
+| 人脸打码 | `--face` | 自动检测并打码人脸 |
+| 固定 OSD 区域 | `--osd-region` | 打码已知矩形/多边形（绝对像素坐标） |
+| Band 区域 OSD | `--osd-band` | 打码 band 内检测到的全部文字 |
+| 文字正则匹配 | `--osd-text` | OCR 后仅打码匹配正则的文本框 |
+
+至少启用 `--face`、`--osd-region`、`--osd-band`、`--osd-text` 之一。
+
 ## 环境要求
 
 - Python >= 3.10
@@ -16,287 +29,209 @@ pip install media-redact
 若尚未发布到 PyPI，可从源码安装：
 
 ```bash
-pip install /path/to/media-redact          # 本地目录
+pip install /path/to/media-redact
 # 或
 pip install git+https://example.com/media-redact.git
 ```
 
-安装后提供两个命令：
-
-
-| 命令           | 说明                                                         |
-| -------------- | ------------------------------------------------------------ |
-| `media-redact` | 对图片/视频打码                                              |
-| `media-region` | Web 区域标注；生成 `--osd-region` / `--osd-band` 参数片段   |
-
-
-验证安装：
+| 命令 | 说明 |
+| ---- | ---- |
+| `media-redact` | 对图片/视频打码 |
+| `media-region` | Web 区域标注；生成 `--osd-region` / `--osd-band` 参数 |
 
 ```bash
 media-redact --version
 media-region --help
 ```
 
-打码时需显式启用 `--face`（人脸）和/或 OSD 相关选项。人脸模型已随包内置（`media_redact/models/face_det.onnx`），无需额外配置。
-
-## 基本用法
+人脸模型（`face_det.onnx`）与 OCR 资源位于 `media_redact/model/`，**首次使用时自动下载**（不随 wheel 打包）。也可预先下载：
 
 ```bash
-# 仅人脸打码
+python scripts/download_models.py          # 全部模型
+python scripts/download_models.py --face   # 仅人脸
+python scripts/download_models.py --ocr    # 仅 OCR
+```
+
+## 快速上手
+
+```bash
+# 人脸
 media-redact video.mp4 --face
 
-# 仅固定 OSD 区域（1920×1080 底栏多边形）
-media-redact image.jpg \
-  --osd-region 0,972;1920,972;1920,1080;0,1080
+# 固定 OSD 区域（1080p 底栏多边形）
+media-redact image.jpg --osd-region 0,972;1920,972;1920,1080;0,1080
 
-# 人脸 + 固定 OSD（1080p 示例：左下/右下时间戳区域）
-media-redact video.mp4 \
-  --face \
-  --osd-region 19,993,480,1079 \
-  --osd-region 1344,993,1901,1079
+# Band OSD（底部 12% 内全部文字）
+media-redact video.mp4 --osd-band bottom:0.12
 
-# 目录批处理（图片与视频）；默认输出：./{dirname}_redacted/
-media-redact photos/ --face --recursive
+# 文字正则（仅日期）
+media-redact video.mp4 --osd-text '\d{4}-\d{2}-\d{2}'
 
-# 指定输出目录（保留子目录结构）
-media-redact input_dir/ --face -o output_dir/ --recursive
+# 组合多种模式
+media-redact video.mp4 --face --osd-region 19,993,480,1079 --osd-band bottom:0.12
+
+# 目录批处理
+media-redact photos/ --face -r
+media-redact input_dir/ --face -o output_dir/ -r
 ```
 
-**单文件**默认输出：当前工作目录下的 `{filename}_redacted.{ext}`。
+**默认输出**
 
-**目录**默认输出：当前工作目录下的 `{dirname}_redacted/`。
+| 输入 | 默认输出 |
+| ---- | -------- |
+| 单文件 | `./{filename}_redacted.{ext}` |
+| 目录 | `./{dirname}_redacted/`（配合 `-r` 保留子目录结构） |
 
-## Redaction Pipeline
+单文件时 `-o` 为输出**文件**；目录输入时 `-o` 为输出**目录**。
 
-```
-┌─────────────────┐
-│  Input          │  image / video frame (RGB)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│  CLI / API      │  create_processor() → RedactProcessor.process_frame()
-└────────┬────────┘
-         │
-         ├──────────────────┬──────────────────┬──────────────────┐
-         ▼                  ▼                  ▼                  ▼
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ --face          │ │ --osd-region    │ │ --osd-band      │ │ --osd-text      │
-│ FaceDetector    │ │ RegionOSD       │ │ TextOSD         │ │ TextOSD         │
-│ YOLO ONNX       │ │ fixed coords    │ │ full-image det  │ │ full-image det  │
-│                 │ │ (no model)      │ │ → band filter   │ │ → band filter   │
-│                 │ │                 │ │ → all boxes     │ │    if set       │
-│                 │ │                 │ │                 │ │ → OCR → regex   │
-└────────┬────────┘ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
-         │                   │                   │                   │
-         └───────────────────┴───────────────────┴───────────────────┘
-                                     │
-                                     ▼
-                          ┌─────────────────────┐
-                          │  MaskRegion[]       │  merge; skip out-of-bounds
-                          └──────────┬──────────┘
-                                     │
-                                     ▼
-                          ┌─────────────────────┐
-                          │  apply_masks()      │  blur / mosaic / solid
-                          └──────────┬──────────┘
-                                     │
-                                     ▼
-                          ┌─────────────────────┐
-                          │  Output             │  redacted image / video
-                          └─────────────────────┘
-```
+## 打码模式
 
-## CLI 选项
+### 人脸（`--face`）
 
-```
-usage: media-redact [-h] [-o OUTPUT] [-r]
-                    [--face] [--face-threshold FACE_THRESHOLD]
-                    [--osd-region SPEC] [--osd-band SPEC] [--osd-text REGEX]
-                    ...
-                    input
-```
-
-
-| 选项                 | 默认值    | 说明                                                         |
-| -------------------- | --------- | ------------------------------------------------------------ |
-| `input`              | —         | 输入图片/视频路径 **或目录**                                 |
-| `-o, --output`       | 见下文    | 单文件时为输出**文件**；目录输入时为输出**目录**             |
-| `-r, --recursive`    | false     | 递归处理子目录中的文件                                       |
-| `--face`             | false     | 启用人脸打码（内置 `media_redact/models/face_det.onnx`）   |
-| `--face-threshold`   | 0.3       | 人脸检测置信度阈值                                           |
-| `--osd-region`       | —         | 固定 OSD 区域（绝对像素坐标）；可重复指定                    |
-| `--osd-band`         | —         | 文字检测 band（`top:0.15`、`bottom:0.12` 等）；可重复指定；用于过滤检测框 |
-| `--osd-text`         | —         | OCR 正则过滤；可重复指定（OR 匹配）                          |
-| `--mask`             | mosaic    | 打码模式：blur / mosaic / solid / none                       |
-| `--mask-shape`       | polygon   | 区域形状：ellipse / polygon                                  |
-| `--mask-scale`       | 1.3       | 人脸区域扩展系数（限制在图像边界内）                         |
-| `--mosaic-size`      | 20        | 马赛克块大小                                                 |
-| `--keep-audio`       | false     | 视频保留原始音轨                                             |
-| `--disable-progress` | false     | 关闭帧进度与批处理文件进度条                                 |
-| `--log-level`        | INFO      | 日志级别（DEBUG / INFO / WARNING / ERROR）                   |
-
-
-## OSD 区域格式
-
-`--osd-region` 使用**绝对像素坐标**。通过重复该参数指定多个区域：
-
-
-| 格式   | 示例（1080p）                                  | 说明              |
-| ------ | ---------------------------------------------- | ----------------- |
-| 矩形   | `--osd-region 19,993,480,1079`                 | `x1,y1,x2,y2`（像素） |
-| 多边形 | `--osd-region 0,972;1920,972;1920,1080;0,1080` | 顶点以 `;` 分隔   |
-
-
-同一命令中可**混合**矩形与多边形——在 CLI 上重复 `--osd-region`，或在 Python 中传入 `osd_regions` 列表：
+基于 ONNX 的人脸检测，可配置阈值与扩展系数：
 
 ```bash
-# CLI：一个多边形 + 一个矩形
+media-redact video.mp4 --face --face-threshold 0.3 --mask-scale 1.3
+```
+
+### 固定 OSD 区域（`--osd-region`）
+
+按**绝对像素坐标**打码用户指定区域。可重复指定；矩形与多边形可混用。
+
+| 格式 | 示例（1080p） | 语法 |
+| ---- | ------------- | ---- |
+| 矩形 | `--osd-region 19,993,480,1079` | `x1,y1,x2,y2` |
+| 多边形 | `--osd-region 0,972;1920,972;1920,1080;0,1080` | 顶点以 `;` 分隔 |
+
+```bash
 media-redact image.jpg \
   --osd-region "1138,430;1137,541;959,547;957,660;1257,673;1255,434" \
   --osd-region "27,613,276,679"
 ```
 
-```python
-# Python API
-redact_image(
-    "image.jpg",
-    "out.jpg",
-    osd_regions=[
-        "1138,430;1137,541;959,547;957,660;1257,673;1255,434",  # 多边形
-        "27,613,276,679",                                          # 矩形
-    ],
-)
-```
+坐标与输入分辨率绑定。完全超出图像边界的区域会被**跳过**（不裁剪）。形状由 `--mask-shape` 控制（默认 `polygon`，亦支持 `ellipse`）。
 
-> **说明**：坐标与输入图片/视频分辨率绑定。完全超出图像边界的区域会被**跳过**（不会裁剪）。
+### Band 区域 OSD（`--osd-band`）
 
-区域形状由 `--mask-shape` 控制（默认 `polygon`；亦支持 `ellipse`）。
+整图文字检测后，保留中心点落在指定 band 内的框，**全部打码**（无 OCR）。
 
-## OCR 文字 OSD（`--osd-band` / `--osd-text`）
-
-基于 PP-OCRv5 的文字检测/识别，无需手动坐标。请先下载 OCR 模型：
+| Band | 示例 | 比例基准 |
+| ---- | ---- | -------- |
+| 上 / 下 | `top:0.15`、`bottom:0.12` | 图像高度 |
+| 左 / 右 | `left:0.08`、`right:0.08` | 图像宽度 |
 
 ```bash
-python scripts/download_ocr_models.py
-```
-
-**`--osd-band`** 与 **`--osd-text`** 均支持**重复指定**（与 `--osd-region` 相同）——可传入多个 band 或正则：
-
-
-| 选项         | 格式                                                    | 说明                                                         |
-| ------------ | ------------------------------------------------------- | ------------------------------------------------------------ |
-| `--osd-band` | `top:0.15` / `bottom:0.12` / `left:0.08` / `right:0.08` | 上下比例相对图像高度；左右相对宽度；可重复指定               |
-| `--osd-text` | Python 正则                                             | 启用 OCR；仅打码匹配框；可重复指定（**OR** 匹配）            |
-
-
-```bash
-# 在多个 band 内打码全部文字（仅检测，无 OCR）
 media-redact video.mp4 \
   --osd-band top:0.15 \
-  --osd-band bottom:0.12 \
-  --osd-band left:0.08
+  --osd-band bottom:0.12
+```
 
-# 多个正则（日期或速度）
-media-redact video.mp4 \
-  --osd-text '\d{4}-\d{2}-\d{2}' \
-  --osd-text '\d+\s*km/h'
+### 文字正则匹配（`--osd-text`）
 
-# band + 多个正则
+整图 det →（可选 band 过滤）→ OCR → 正则匹配，**仅打码匹配框**。
+
+```bash
+# 整图
+media-redact video.mp4 --osd-text '\d{4}-\d{2}-\d{2}'
+
+# 限定 band 范围
 media-redact video.mp4 \
   --osd-band bottom:0.15 \
   --osd-text '\d{4}-\d{2}-\d{2}' \
   --osd-text 'GPS[:：]\s*\d+'
 ```
 
-```python
-# Python API：传入 band / 正则列表
-redact_video(
-    "video.mp4",
-    osd_bands=["top:0.15", "bottom:0.12", "right:0.1"],
-    osd_text=[r"\d{4}-\d{2}-\d{2}", r"\d+\s*km/h"],
-)
+多个 `--osd-text` 为正则 **OR** 匹配。
+
+| 配置 | 流程 |
+| ---- | ---- |
+| 仅 `--osd-band` | 整图 det → band 过滤 → 打码全部框 |
+| `--osd-text` | 整图 det →（可选 band 过滤）→ OCR → 正则 → 打码匹配框 |
+| 仅 `--osd-region` | 固定坐标 → 直接打码（无文字检测） |
+
+## CLI 参考
+
+```
+usage: media-redact [-h] [-o OUTPUT] [-r]
+                    [--face] [--face-threshold FACE_THRESHOLD]
+                    [--osd-region SPEC] [--osd-band SPEC] [--osd-text REGEX]
+                    [--mask {blur,mosaic,solid,none}] [--mask-shape {ellipse,polygon}]
+                    ...
+                    input
 ```
 
-
-| 模式              | 行为                                                         |
-| ----------------- | ------------------------------------------------------------ |
-| 仅 `--osd-band`   | 整图 det → band 过滤 → **打码全部框**（无 OCR）              |
-| `--osd-text`      | 整图 det →（可选 band 过滤）→ OCR → 正则 → **打码匹配框** |
-| 仅 `--osd-region` | 固定坐标 → **直接打码区域**（无文字检测）                    |
-
+| 选项 | 默认值 | 说明 |
+| ---- | ------ | ---- |
+| `input` | — | 图片/视频路径或目录 |
+| `-o, --output` | 见上文 | 单文件时为输出文件；目录时为输出目录 |
+| `-r, --recursive` | false | 递归处理子目录 |
+| `--face` | false | 启用人脸打码 |
+| `--face-threshold` | 0.3 | 人脸检测置信度阈值 |
+| `--osd-region` | — | 固定 OSD 区域；可重复 |
+| `--osd-band` | — | 文字检测 band；可重复 |
+| `--osd-text` | — | OCR 正则；可重复（OR 匹配） |
+| `--osd-text-threshold` | 0.3 | 文字概率图阈值 |
+| `--osd-text-box-threshold` | 0.5 | 文字框分数阈值 |
+| `--osd-text-rec-threshold` | 0.0 | OCR 最低置信度 |
+| `--mask` | mosaic | `blur` / `mosaic` / `solid` / `none` |
+| `--mask-shape` | polygon | `ellipse` / `polygon` |
+| `--mask-scale` | 1.3 | 人脸区域扩展（限制在图像内） |
+| `--mosaic-size` | 20 | 马赛克块大小 |
+| `--keep-audio` | false | 视频保留音轨 |
+| `--disable-progress` | false | 关闭进度条 |
+| `--log-level` | INFO | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 
 ## 区域标注工具（`media-region`）
 
-坐标未知时，可用 Web 界面绘制矩形、多边形或 band 线，并复制 CLI 或 Python API 片段（默认 `http://127.0.0.1:8765`）：
+坐标未知时，可在浏览器中画框/画线并复制 CLI 或 API 片段（默认 `http://127.0.0.1:8765`）：
 
 ```bash
-# 启动标注工具（在页面中上传图片/视频或输入流 URL）
-media-region
-
-# 预加载图片或视频
-media-region frame.jpg
-
-# 自定义端口（远程主机可配合 SSH 端口转发）
+media-region                  # 启动标注
+media-region frame.jpg        # 预加载图片或视频
 media-region frame.jpg --port 9000
-
-# 调试 RTSP/流连接
-media-region --log-level DEBUG
 ```
 
-
-| 操作                 | 说明                                                         |
-| -------------------- | ------------------------------------------------------------ |
-| 上传图片             | 在浏览器中直接加载                                           |
-| 上传视频             | 提取首帧；优先浏览器端，其次分块上传或 OpenCV 回退          |
-| 流 URL               | 提取首帧；优先浏览器端，其次 OpenCV 后端回退                 |
-| 矩形 / `R`           | 点击两角，生成固定 `--osd-region`                            |
-| 多边形 / `P`         | 点击顶点，生成固定 `--osd-region`                            |
-| Band 线 / `B`        | 点击线段端点，生成 `--osd-band` 比例                         |
-| 完成多边形 / `N`     | 闭合当前多边形（≥3 个点）                                    |
-| 撤销 / `U`           | 撤销上一步                                                   |
-| 清空 / `C`           | 清除全部区域（避免 Ctrl+C——会触发清空）                      |
-| Copy CLI             | 复制 `media-redact` 命令片段                                 |
-| Copy API             | 复制 Python `redact_image()` 调用片段                        |
-| Download coords.txt  | 导出 CLI 与 API 片段                                         |
-
-
-将复制的参数用于 `media-redact` 即可。
+| 操作 | 说明 |
+| ---- | ---- |
+| 矩形 / `R` | 点击两角 → `--osd-region` |
+| 多边形 / `P` | 点击顶点 → `--osd-region`；`N` 闭合 |
+| Band 线 / `B` | 线段端点 → `--osd-band` 比例 |
+| 撤销 / `U`、清空 / `C` | 撤销 / 清除全部 |
+| Copy CLI / Copy API | 复制可直接运行的片段 |
 
 ## Python API
-
-也可在 Python 中调用 `redact_image()` / `redact_video()`。输入可以是单文件、多文件或目录（可选递归遍历）。批处理时通过 `output_dir` 指定输出根目录——**保留相对子目录结构**，每个文件名追加 `_redacted` 后缀。
 
 ```python
 from media_redact import redact_image, redact_video
 
-# 单张图片
+# 单文件
 redact_image("photo.jpg", face=True)
-
-# 指定输出路径
 redact_image("photo.jpg", "out.jpg", face=True)
 
-# 目录批处理（递归），保留子目录
-redact_image(
-    "input_dir/",
-    output_dir="output_dir/",
-    recursive=True,
-    face=True,
-)
+# 目录批处理（使用 output_dir，保留目录结构）
+redact_image("input_dir/", output_dir="output_dir/", recursive=True, face=True)
 
-# 多个文件
+# 多文件
 redact_image(
     ["a.jpg", "b.jpg"],
     output_dir="output_dir/",
     osd_regions=["0,972;1920,972;1920,1080;0,1080"],
 )
 
-# 视频用法相同
+# 视频
 redact_video(
     "input_videos/",
     output_dir="output_videos/",
     recursive=True,
     face=True,
+    osd_bands=["bottom:0.12"],
+    osd_text=[r"\d{4}-\d{2}-\d{2}"],
     keep_audio=True,
 )
 ```
+
+CLI 用 `-o` 统一指定文件或目录输出；Python API 中单文件用 `output`，批处理用 `output_dir`。
+
+## 延伸阅读
+
+- [Developer Guide](DEVELOPER_GUIDE.md) — 项目结构、打码流程图、测试与展示图生成

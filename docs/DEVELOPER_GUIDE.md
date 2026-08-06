@@ -24,20 +24,31 @@ This will:
 
 ## Resources
 
-`media_redact/models/face_det.onnx` is the face detection model and **must be included in release builds**. Optional test data lives under `assets/data/` at the repo root:
+Models live under `media_redact/model/` and are **not shipped in the wheel**. Missing assets are downloaded on first use:
+
+| Asset | Source |
+| ----- | ------ |
+| `face_det.onnx` | GitHub repo (`media_redact/model/face_det.onnx`) |
+| OCR (`text_det.onnx`, `text_rec.onnx`, `ppocrv5_dict.txt`) | ModelScope (RapidOCR) |
+
+Only `face_det.onnx` is tracked in git (for GitHub raw downloads). OCR files are gitignored and fetched automatically.
+
+Optional test data lives under `assets/data/` at the repo root:
 
 ```bash
 media_redact/
-└── models/face_det.onnx   # Face model (bundled in releases)
+└── model/
+    ├── face_det.onnx      # Face model (in git; auto-downloaded for pip installs)
+    └── text_*.onnx        # OCR (auto-downloaded, not in git)
 
 assets/
 └── data/                  # Sample inputs (optional, not packaged)
 ```
 
-Download OCR models for text OSD development:
+Prefetch all models:
 
 ```bash
-python scripts/download_ocr_models.py
+python scripts/download_models.py
 ```
 
 ## Run and Test
@@ -66,7 +77,7 @@ Regenerate README demo images (requires OCR models and sample data under `assets
 python scripts/generate_readme_demos.py
 ```
 
-Outputs are written to `assets/media/demo_redact.jpg`.
+Outputs are written to `assets/media/demo_preview.jpg` and `assets/media/demo_redact.jpg` (both scaled to the same width for README comparison).
 
 After activating the virtual environment:
 
@@ -103,7 +114,7 @@ media-redact/
 │   │   └── osd/            # OSD detection
 │   ├── mask/               # Masking effects
 │   ├── pipeline/           # Image/video pipeline
-│   ├── models/             # ONNX models (shipped in releases)
+│   ├── model/              # ONNX models (auto-downloaded; not in wheel)
 │   ├── tool/               # media-region annotator
 │   └── cli.py              # CLI entry point
 ├── assets/
@@ -117,6 +128,47 @@ media-redact/
     ├── README_CN.md        # Chinese README (overview)
     ├── images/             # (optional) legacy README assets
     └── ROADMAP.md          # Roadmap
+```
+
+## Redaction Pipeline
+
+```
+┌─────────────────┐
+│  Input          │  image / video frame (RGB)
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│  CLI / API      │  create_processor() → RedactProcessor.process_frame()
+└────────┬────────┘
+         │
+         ├──────────────────┬──────────────────┬──────────────────┐
+         ▼                  ▼                  ▼                  ▼
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ --face          │ │ --osd-region    │ │ --osd-band      │ │ --osd-text      │
+│ FaceDetector    │ │ RegionOSD       │ │ TextOSD         │ │ TextOSD         │
+│ YOLO ONNX       │ │ fixed coords    │ │ full-image det  │ │ full-image det  │
+│                 │ │ (no model)      │ │ → band filter   │ │ → band filter   │
+│                 │ │                 │ │ → all boxes     │ │    if set       │
+│                 │ │                 │ │                 │ │ → OCR → regex   │
+└────────┬────────┘ └────────┬────────┘ └────────┬────────┘ └────────┬────────┘
+         │                   │                   │                   │
+         └───────────────────┴───────────────────┴───────────────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │  MaskRegion[]       │  merge; skip out-of-bounds
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │  apply_masks()      │  blur / mosaic / solid
+                          └──────────┬──────────┘
+                                     │
+                                     ▼
+                          ┌─────────────────────┐
+                          │  Output             │  redacted image / video
+                          └─────────────────────┘
 ```
 
 ## Code Style (Ruff)

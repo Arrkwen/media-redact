@@ -6,7 +6,7 @@
 
 | 原图 | 打码输出 |
 | -------------- | ------------- |
-| ![Original frame](../assets/media/demo.jpg) | ![Redact output](../assets/media/demo_redact.jpg) |
+| <img src="../assets/media/demo_preview.jpg" width="480" alt="原图" /> | <img src="../assets/media/demo_redact.jpg" width="480" alt="打码输出" /> |
 
 ## 发版信息
 

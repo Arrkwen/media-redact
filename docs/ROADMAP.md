@@ -40,7 +40,7 @@ media-redact/
 │   │       └── composite.py
 │   ├── mask/               # 打码（blur/mosaic/solid）
 │   ├── pipeline/           # 图片/视频流水线
-│   ├── models/             # ONNX 模型
+│   ├── model/              # ONNX 模型（按需下载，不打进 wheel）
 │   │   ├── face_det.onnx
 │   │   └── text_det.onnx   # PP-OCRv5_mobile_det
 │   ├── tool/               # media-region 区域标注
@@ -110,8 +110,8 @@ media-redact/
 # 安装
 pip install -e .
 
-# 下载文字检测模型（发版前可预置到 models/text_det.onnx）
-python scripts/download_text_det_model.py
+# 预下载模型（也可在首次打码时自动下载）
+python scripts/download_models.py
 
 # 仅人脸打码
 media-redact assets/data/input.mp4 --face -o output.mp4
@@ -120,8 +120,8 @@ media-redact assets/data/input.mp4 --face -o output.mp4
 media-redact assets/data/image.jpg \
   --osd-region 0,972;1920,972;1920,1080;0,1080 --mask-shape polygon
 
-# 下载 OCR 模型与字典
-python scripts/download_ocr_models.py
+# 预下载 OCR 模型与字典（首次 --osd-text / --osd-band 时也会自动下载）
+python scripts/download_models.py --ocr
 
 # band 内文字检测（全部打码）
 media-redact assets/data/image.jpg --osd-band bottom:0.12

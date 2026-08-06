@@ -5,7 +5,7 @@ from __future__ import annotations
 from media_redact.config import MaskMode, MaskShape, RedactConfig
 from media_redact.detect.face import FaceDetector
 from media_redact.detect.osd import build_osd_detector
-from media_redact.paths import DEFAULT_FACE_MODEL
+from media_redact.model import ensure_face_model, ensure_ocr_models
 from media_redact.pipeline.processor import RedactProcessor
 
 
@@ -47,12 +47,13 @@ def create_processor(
 
     face_detector = None
     if config.face_enabled:
-        if not DEFAULT_FACE_MODEL.exists():
-            raise FileNotFoundError(f"Face model not found: {DEFAULT_FACE_MODEL}")
         face_detector = FaceDetector(
-            DEFAULT_FACE_MODEL,
+            ensure_face_model(),
             score_threshold=config.face_threshold,
         )
+
+    if has_text_osd:
+        ensure_ocr_models(require_rec=bool(osd_text))
 
     osd_detector = build_osd_detector(
         osd_regions=osd_regions if has_region_osd else None,

@@ -17,6 +17,8 @@ from media_redact.mask.applicator import apply_masks
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = ROOT / "assets/media/demo.jpg"
 OUTPUT_PATH = ROOT / "assets/media/demo_redact.jpg"
+PREVIEW_ORIGINAL_PATH = ROOT / "assets/media/demo_preview.jpg"
+README_COMPARE_WIDTH = 960
 PREVIEW_WIDTH = 1400
 PANEL_GAP = 12
 TITLE_HEIGHT = 72
@@ -150,6 +152,26 @@ def _add_title_bar(tile: np.ndarray, title: str, caption: str) -> np.ndarray:
     return np.vstack([label_bar, tile])
 
 
+def _resize_to_width(image: np.ndarray, width: int) -> np.ndarray:
+    height, current_width = image.shape[:2]
+    if current_width <= width:
+        return image
+    scale = width / current_width
+    return cv2.resize(
+        image,
+        (width, int(height * scale)),
+        interpolation=cv2.INTER_AREA,
+    )
+
+
+def _write_readme_original_preview(source: Path, output: Path) -> None:
+    original = cv2.imread(str(source), cv2.IMREAD_COLOR)
+    if original is None:
+        raise RuntimeError(f"Failed to read sample image: {source}")
+    preview = _resize_to_width(original, README_COMPARE_WIDTH)
+    _write_jpg(output, preview)
+
+
 def _build_overview(panels: list[np.ndarray], demos: list[DemoPanel]) -> np.ndarray:
     labeled = [
         _add_title_bar(tile, panel.title, panel.caption)
@@ -161,16 +183,7 @@ def _build_overview(panels: list[np.ndarray], demos: list[DemoPanel]) -> np.ndar
     top = np.hstack([labeled[0], gap_v, labeled[1]])
     bottom = np.hstack([labeled[2], gap_v, labeled[3]])
     overview = np.vstack([top, gap_h, bottom])
-
-    height, width = overview.shape[:2]
-    if width <= PREVIEW_WIDTH:
-        return overview
-    scale = PREVIEW_WIDTH / width
-    return cv2.resize(
-        overview,
-        (PREVIEW_WIDTH, int(height * scale)),
-        interpolation=cv2.INTER_AREA,
-    )
+    return _resize_to_width(overview, README_COMPARE_WIDTH)
 
 
 def _demo_panels() -> list[DemoPanel]:
@@ -212,8 +225,10 @@ def main() -> int:
     tile_width = (PREVIEW_WIDTH - PANEL_GAP) // 2
 
     panels = [_render_panel(frame_rgb, panel, tile_width) for panel in demos]
+    _write_readme_original_preview(SOURCE, PREVIEW_ORIGINAL_PATH)
     overview = _build_overview(panels, demos)
     _write_jpg(OUTPUT_PATH, overview)
+    print(f"Wrote {PREVIEW_ORIGINAL_PATH.relative_to(ROOT)}")
     print(f"Wrote {OUTPUT_PATH.relative_to(ROOT)}")
     return 0
 
