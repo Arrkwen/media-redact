@@ -324,6 +324,35 @@ uv run ruff format media_redact tests     # format
 uv add requests
 ```
 
+### Publishing to PyPI
+
+Uses the same **GitHub Actions + PyPI Trusted Publishing** flow as (workflow name: `media-redact-publisher`).
+
+**One-time setup (PyPI + GitHub):**
+
+1. PyPI → **Publishing** → **Add a new pending publisher**
+   - PyPI project name: `media-redact`
+   - Owner / Repository: your GitHub org/user and repo
+   - Workflow name: `publish.yml`
+   - Environment name: `media-redact-publisher`
+2. GitHub repo → **Settings** → **Environments** → create `media-redact-publisher` (no manual token; Trusted Publishing handles auth)
+
+**Release steps:**
+
+1. Bump `version` in `pyproject.toml` and `__version__` in `media_redact/__init__.py`
+2. Commit and push to `main`
+3. Create a **Published** GitHub Release with a matching tag (e.g. `v0.2.0` or `0.2.0`)
+4. [`.github/workflows/publish.yml`](.github/workflows/publish.yml) builds and uploads to PyPI
+
+You can also run **Actions → media-redact-publisher → Run workflow** manually.
+
+Verify locally:
+
+```bash
+uv build
+ls dist/
+```
+
 ---
 
 ## Roadmap

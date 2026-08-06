@@ -324,6 +324,35 @@ uv run ruff format media_redact tests     # 格式化
 uv add requests
 ```
 
+### 发布到 PyPI
+
+采用 **GitHub Actions + PyPI Trusted Publishing** 流程（workflow 名称：`media-redact-publisher`）。
+
+**一次性配置（PyPI + GitHub）：**
+
+1. PyPI → **Publishing** → **Add a new pending publisher**
+   - PyPI project name: `media-redact`
+   - Owner / Repository: 你的 GitHub 组织或用户名与仓库名
+   - Workflow name: `publish.yml`
+   - Environment name: `media-redact-publisher`
+2. GitHub 仓库 → **Settings** → **Environments** → 新建 `media-redact-publisher`（无需手动填 Token，Trusted Publishing 自动鉴权）
+
+**发版步骤：**
+
+1. 同步版本号：`pyproject.toml` 的 `version` 与 `media_redact/__init__.py` 的 `__version__`
+2. 提交并推送至 `main`
+3. 在 GitHub 创建 **Published Release**，标签与版本一致（如 `v0.2.0` 或 `0.2.0`）
+4. workflow [`.github/workflows/publish.yml`](../.github/workflows/publish.yml) 自动构建并上传至 PyPI
+
+也可在 **Actions → media-redact-publisher → Run workflow** 手动触发（需已有对应 Release 或用于调试）。
+
+本地验证构建：
+
+```bash
+uv build
+ls dist/
+```
+
 ---
 
 ## 路线图
