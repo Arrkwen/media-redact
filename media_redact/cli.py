@@ -99,6 +99,12 @@ def parse_args() -> argparse.Namespace:
         help="Minimum recognition confidence to consider a text box (default: 0.0)",
     )
     parser.add_argument(
+        "--osd-text-model-size",
+        default="small",
+        choices=["tiny", "small", "medium"],
+        help="PP-OCRv6 text det/rec model size (default: small)",
+    )
+    parser.add_argument(
         "--mask",
         default="mosaic",
         choices=["blur", "mosaic", "solid", "none"],
@@ -221,6 +227,7 @@ def main() -> None:
         "osd_text_threshold": args.osd_text_threshold,
         "osd_text_box_threshold": args.osd_text_box_threshold,
         "osd_text_rec_threshold": args.osd_text_rec_threshold,
+        "osd_text_model_size": args.osd_text_model_size,
         "osd_text": args.osd_text,
         "face_threshold": args.face_threshold,
         "mask": args.mask,

@@ -23,7 +23,7 @@
 ```
 输入帧 → [人脸检测] + [OSD 检测] → 合并 bbox → 统一打码 → 输出
                       ├─ 固定区域 (RegionOSDDetector)
-                      └─ 文字检测 (TextOSDDetector, PP-OCRv5_mobile_det)
+                      └─ 文字检测 (TextOSDDetector, PP-OCRv6_det_small)
 ```
 
 ```
@@ -59,12 +59,12 @@ media-redact/
 
 ### Phase 2 — 文字检测（v0.3）
 
-- 模型：**PP-OCRv5_mobile_det** ONNX（`text_det.onnx`）
+- 模型：**PP-OCRv6_det_small** ONNX（`text_det.onnx`）
 - 限域：通过 `--osd-band` 或配合 `--osd-region` 过滤检测框
 
 ### Phase 3 — 识别 + 正则过滤（v0.3）
 
-- 模型：**PP-OCRv5_mobile_rec** ONNX（`text_rec.onnx`）+ `ppocrv5_dict.txt`
+- 模型：**PP-OCRv6_rec_small** ONNX（`text_rec.onnx`）+ `ppocrv6_dict.txt`
 - 流程：full-image det → (band filter if set) → OCR → text regex
 - [ ] 视频多帧时序稳定，减少闪烁
 
@@ -87,13 +87,13 @@ media-redact/
 
 ### v0.3 — OCR OSD
 
-- [x] PP-OCRv5_mobile_det 文字检测（`TextOSDDetector`）
-- [x] PP-OCRv5_mobile_rec 文字识别 + `--osd-text` 正则过滤
+- [x] PP-OCRv6_det_small 文字检测（`TextOSDDetector`）
+- [x] PP-OCRv6_rec_small 文字识别 + `--osd-text` 正则过滤
 - [x] band 限域 + 几何规则过滤
 - [x] CLI/API：`--osd-text`、`--osd-band`
 - [ ] 视频时序稳定
 
-> **依赖说明**：PP-OCRv5 ONNX（IR v10）需要 **onnxruntime>=1.18**（容器内开发环境通常满足）。
+> **依赖说明**：PP-OCRv6 ONNX 需要 **onnxruntime>=1.18**。
 
 ### v0.4 — 性能优化
 

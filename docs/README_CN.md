@@ -20,7 +20,7 @@
 - **人脸打码**：ONNX 模型检测，支持 blur / mosaic / solid
 - **固定 OSD 区域**：通过 `--osd-region` 打码用户指定的矩形/多边形（绝对像素坐标）
 - **Band 区域 OSD**：通过 `--osd-band` 限定上下/左右 band，检测 band 内文字并全部打码
-- **文字正则匹配 OSD**：PP-OCRv5 检测 + OCR，仅打码 `--osd-text` 正则匹配的识别文本
+- **文字正则匹配 OSD**：PP-OCRv6 检测 + OCR，仅打码 `--osd-text` 正则匹配的识别文本
 - **区域标注**：配套 Web 工具 `media-region`，在浏览器中画框/画线获取坐标与 band 比例
 - **Python API 与 CLI 批处理**：支持目录批量处理并保留子目录结构（`-o` / `--output`、`--recursive`）
 

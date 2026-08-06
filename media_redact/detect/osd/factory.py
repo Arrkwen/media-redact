@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from media_redact import paths
+from media_redact.paths import TextModelSize
 from media_redact.detect.osd.bands import parse_osd_band
 from media_redact.detect.osd.composite import CompositeOSDDetector
 from media_redact.detect.osd.text_detector import TextOSDDetector
@@ -18,6 +19,7 @@ def build_osd_detector(
     osd_text_threshold: float = 0.3,
     osd_text_box_threshold: float = 0.5,
     osd_text_rec_threshold: float = 0.0,
+    osd_text_model_size: TextModelSize = "small",
     osd_text: list[str] | None = None,
     text_det_model_path: Path | None = None,
     text_rec_model_path: Path | None = None,
@@ -38,8 +40,8 @@ def build_osd_detector(
             else None
         )
         text_detector = TextOSDDetector(
-            det_model_path=text_det_model_path or paths.default_text_det_model(),
-            rec_model_path=text_rec_model_path or paths.default_text_rec_model(),
+            det_model_path=text_det_model_path or paths.default_text_det_model(osd_text_model_size),
+            rec_model_path=text_rec_model_path or paths.default_text_rec_model(osd_text_model_size),
             dict_path=text_dict_path or paths.default_text_dict(),
             bands=band_specs,
             score_threshold=osd_text_threshold,

@@ -8,7 +8,7 @@ import numpy as np
 
 
 class CTCLabelDecode:
-    """CTC 解码，兼容 PP-OCRv4/v5 字典格式。"""
+    """CTC 解码，兼容 PP-OCRv4/v5/v6 字典格式。"""
 
     def __init__(self, character_path: str | Path) -> None:
         self.character = self._load_character(character_path)

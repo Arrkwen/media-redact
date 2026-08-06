@@ -7,6 +7,7 @@ from media_redact.detect.face import FaceDetector
 from media_redact.detect.osd import build_osd_detector
 from media_redact.model import ensure_face_model, ensure_ocr_models
 from media_redact.pipeline.processor import RedactProcessor
+from media_redact.paths import TextModelSize
 
 
 def create_processor(
@@ -17,6 +18,7 @@ def create_processor(
     osd_text_threshold: float = 0.3,
     osd_text_box_threshold: float = 0.5,
     osd_text_rec_threshold: float = 0.0,
+    osd_text_model_size: TextModelSize = "small",
     osd_text: list[str] | None = None,
     face_threshold: float = 0.3,
     mask: MaskMode = "mosaic",
@@ -53,7 +55,7 @@ def create_processor(
         )
 
     if has_text_osd:
-        ensure_ocr_models(require_rec=bool(osd_text))
+        ensure_ocr_models(require_rec=bool(osd_text), model_size=osd_text_model_size)
 
     osd_detector = build_osd_detector(
         osd_regions=osd_regions if has_region_osd else None,
@@ -61,6 +63,7 @@ def create_processor(
         osd_text_threshold=osd_text_threshold,
         osd_text_box_threshold=osd_text_box_threshold,
         osd_text_rec_threshold=osd_text_rec_threshold,
+        osd_text_model_size=osd_text_model_size,
         osd_text=osd_text if osd_text else None,
     )
 

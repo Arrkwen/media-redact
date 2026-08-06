@@ -23,7 +23,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Face redaction**: ONNX-based detection with blur / mosaic / solid
 - **Fixed OSD regions**: Redact user-defined rectangles or polygons via `--osd-region` (absolute pixel coordinates)
 - **Band OSD regions**: Limit text detection to top/bottom/left/right bands via `--osd-band`; redact all detected text in band
-- **OSD text regex match**: PP-OCRv5 detection + OCR; redact only boxes whose recognized text matches `--osd-text` patterns
+- **OSD text regex match**: PP-OCRv6 detection + OCR; redact only boxes whose recognized text matches `--osd-text` patterns
 - **Region annotation**: Companion web tool `media-region` for drawing regions and band ratios in a browser
 - **Python API & CLI batch**: Process directories with preserved layout (`-o` / `--output`, `--recursive`)
 

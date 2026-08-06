@@ -1,4 +1,4 @@
-"""PP-OCRv5 mobile 文字 OSD 检测器。"""
+"""PP-OCRv6 文字 OSD 检测器。"""
 
 from __future__ import annotations
 
@@ -43,7 +43,6 @@ class TextOSDDetector:
         unclip_ratio: float = 1.6,
         use_dilation: bool = True,
         pattern_filter: TextRegionFilter | None = None,
-        geometry_filter: TextRegionFilter | None = None,
         recognizer: TextRecognizer | None = None,
     ) -> None:
         det_path = Path(det_model_path)
@@ -59,7 +58,6 @@ class TextOSDDetector:
             unclip_ratio=unclip_ratio,
             use_dilation=use_dilation,
         )
-        self.geometry_filter = geometry_filter or TextRegionFilter()
         self.rec_score_threshold = rec_score_threshold
 
         use_patterns = bool(pattern_filter and pattern_filter._patterns)
@@ -67,7 +65,7 @@ class TextOSDDetector:
             if recognizer is None:
                 if not rec_model_path or not dict_path:
                     raise ValueError(
-                        "osd_text requires text_rec.onnx and ppocrv5_dict.txt."
+                        "osd_text requires text_rec.onnx and ppocrv6_dict.txt."
                     )
                 recognizer = TextRecognizer(rec_model_path, dict_path)
             self.recognizer = recognizer
@@ -85,7 +83,7 @@ class TextOSDDetector:
         检测文字区域；``osd_text`` 模式下仅返回正则匹配框。
 
         Pipeline:
-            full-image det → (band filter if set) → geometry filter
+            full-image det → (band filter if set)
             → [OCR → text regex when ``osd_text``]
         """
         if image.ndim == 2:
@@ -94,11 +92,28 @@ class TextOSDDetector:
             image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
 
         regions = self._full_image_det(image)
+        logger.debug("OSD text det: {} box(es) after full-image det", len(regions))
+
+        before_band = len(regions)
         regions = self._apply_spatial_filters(image, regions)
-        regions = self.geometry_filter.filter_geometry(image, regions)
+        if self.bands:
+            logger.debug(
+                "OSD text det: {} box(es) after band filter (from {})",
+                len(regions),
+                before_band,
+            )
+
         if not regions or self.recognizer is None:
+            logger.debug("OSD text det: {} box(es) to redact", len(regions))
             return regions
-        return self._ocr_and_match_regex(image, regions)
+
+        matched = self._ocr_and_match_regex(image, regions)
+        logger.debug(
+            "OSD text det: {} box(es) after regex match (from {})",
+            len(matched),
+            len(regions),
+        )
+        return matched
 
     def _full_image_det(self, image_bgr: np.ndarray) -> list[MaskRegion]:
         rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)

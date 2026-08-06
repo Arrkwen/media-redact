@@ -29,7 +29,7 @@ Runtime models are cached under **`~/.media_redact/models/`** by default (overri
 | Asset | Source |
 | ----- | ------ |
 | `face_det.onnx` | GitHub repo (`assets/models/face_det.onnx`) |
-| OCR (`text_det.onnx`, `text_rec.onnx`, `ppocrv5_dict.txt`) | ModelScope (RapidOCR) |
+| OCR (`text_det.onnx`, `text_rec.onnx`, `ppocrv6_dict.txt`) | ModelScope RapidOCR PP-OCRv6 small |
 
 `assets/models/face_det.onnx` is tracked in git as the upstream source. OCR files are fetched automatically into the user cache directory.
 

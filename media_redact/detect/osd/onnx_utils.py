@@ -16,7 +16,7 @@ def load_onnx_session(path: Path, *, model_label: str):
         if "Unsupported model IR version" in message:
             raise RuntimeError(
                 f"Failed to load {model_label} model {path}. "
-                "PP-OCRv5 ONNX models require onnxruntime>=1.18. "
+                "PP-OCRv6 ONNX models require onnxruntime>=1.18. "
                 f"Original error: {exc}"
             ) from exc
         raise

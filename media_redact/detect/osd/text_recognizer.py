@@ -1,4 +1,4 @@
-"""PP-OCRv5 mobile 文字识别器。"""
+"""PP-OCRv6 文字识别器。"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from media_redact.detect.osd.text_rec_postprocess import CTCLabelDecode
 
 
 class TextRecognizer:
-    """使用 PP-OCRv5_mobile_rec ONNX 识别文字。"""
+    """使用 PP-OCRv6_rec_small ONNX 识别文字。"""
 
     def __init__(
         self,

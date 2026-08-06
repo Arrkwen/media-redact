@@ -16,9 +16,11 @@ def test_default_model_dir(monkeypatch, tmp_path):
     model_dir = get_model_dir()
     assert model_dir == (tmp_path / ".media_redact" / "models").resolve()
     assert default_face_model() == model_dir / "face_det.onnx"
-    assert default_text_det_model() == model_dir / "text_det.onnx"
-    assert default_text_rec_model() == model_dir / "text_rec.onnx"
-    assert default_text_dict() == model_dir / "ppocrv5_dict.txt"
+    assert default_text_det_model() == model_dir / "text_det_small.onnx"
+    assert default_text_rec_model() == model_dir / "text_rec_small.onnx"
+    assert default_text_det_model("medium") == model_dir / "text_det_medium.onnx"
+    assert default_text_rec_model("tiny") == model_dir / "text_rec_tiny.onnx"
+    assert default_text_dict() == model_dir / "ppocrv6_dict.txt"
 
 
 def test_model_dir_env_override(monkeypatch, tmp_path):

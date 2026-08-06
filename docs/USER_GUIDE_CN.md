@@ -168,6 +168,7 @@ usage: media-redact [-h] [-o OUTPUT] [-r]
 | `--osd-text-threshold` | 0.3 | 文字概率图阈值 |
 | `--osd-text-box-threshold` | 0.5 | 文字框分数阈值 |
 | `--osd-text-rec-threshold` | 0.0 | OCR 最低置信度 |
+| `--osd-text-model-size` | small | PP-OCRv6 文字 det/rec 模型尺寸：`tiny` / `small` / `medium` |
 | `--mask` | mosaic | `blur` / `mosaic` / `solid` / `none` |
 | `--mask-shape` | polygon | `ellipse` / `polygon` |
 | `--mask-scale` | 1.3 | 人脸区域扩展（限制在图像内） |
@@ -211,6 +212,7 @@ redact_image(
     osd_text_threshold=0.3,
     osd_text_box_threshold=0.5,
     osd_text_rec_threshold=0.0,
+    osd_text_model_size="small",
     mask="mosaic",
     mask_shape="polygon",
     mask_scale=1.3,
@@ -223,6 +225,9 @@ redact_video(..., keep_audio=False)  # 其余参数与 redact_image 相同
 
 ```python
 from media_redact import redact_image, redact_video
+# from media_redact.log import setup_logging
+# setup_logging("INFO")  # DEBUG / INFO / WARNING / ERROR
+
 
 # 单文件
 redact_image("photo.jpg", face=True)

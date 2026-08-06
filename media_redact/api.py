@@ -12,7 +12,7 @@ from media_redact.config import MaskMode, MaskShape
 from media_redact.factory import create_processor
 from media_redact.io.files import get_file_type
 from media_redact.log import ensure_logging, logger
-from media_redact.paths import default_output_path
+from media_redact.paths import TextModelSize, default_output_path
 from media_redact.pipeline.image import process_image
 from media_redact.pipeline.processor import RedactProcessor
 from media_redact.pipeline.video import process_video
@@ -211,6 +211,7 @@ def redact_image(
     osd_text_threshold: float = 0.3,
     osd_text_box_threshold: float = 0.5,
     osd_text_rec_threshold: float = 0.0,
+    osd_text_model_size: TextModelSize = "small",
     mask: MaskMode = "mosaic",
     mask_shape: MaskShape = "polygon",
     mask_scale: float = 1.3,
@@ -254,6 +255,7 @@ def redact_image(
         osd_text_threshold=osd_text_threshold,
         osd_text_box_threshold=osd_text_box_threshold,
         osd_text_rec_threshold=osd_text_rec_threshold,
+        osd_text_model_size=osd_text_model_size,
         osd_text=osd_text,
         face_threshold=face_threshold,
         mask=mask,
@@ -286,6 +288,7 @@ def redact_video(
     osd_text_threshold: float = 0.3,
     osd_text_box_threshold: float = 0.5,
     osd_text_rec_threshold: float = 0.0,
+    osd_text_model_size: TextModelSize = "small",
     mask: MaskMode = "mosaic",
     mask_shape: MaskShape = "polygon",
     mask_scale: float = 1.3,
@@ -330,6 +333,7 @@ def redact_video(
         osd_text_threshold=osd_text_threshold,
         osd_text_box_threshold=osd_text_box_threshold,
         osd_text_rec_threshold=osd_text_rec_threshold,
+        osd_text_model_size=osd_text_model_size,
         osd_text=osd_text,
         face_threshold=face_threshold,
         mask=mask,

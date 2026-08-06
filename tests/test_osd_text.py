@@ -162,15 +162,6 @@ def test_text_preprocess_output_shape():
     assert tensor.shape[2] % 32 == 0
 
 
-def test_text_region_filter_geometry():
-    image = np.zeros((1000, 1920, 3), dtype=np.uint8)
-    tiny = MaskRegion.from_rect((0, 0, 5, 5), label="osd_text")
-    normal = MaskRegion.from_rect((0, 950, 400, 990), label="osd_text")
-    filt = TextRegionFilter()
-    kept = filt.filter_geometry(image, [tiny, normal])
-    assert len(kept) == 1
-
-
 def test_text_region_filter_pattern_match():
     filt = TextRegionFilter(TextFilterConfig(patterns=[r"\d{4}-\d{2}-\d{2}", r"\d+ km/h"]))
     assert filt.matches_text("2024-08-06")
@@ -181,7 +172,7 @@ def test_text_region_filter_pattern_match():
 def test_ctc_decoder_loads_dict():
     dict_path_obj = default_text_dict()
     if not dict_path_obj.exists():
-        pytest.skip("ppocrv5_dict.txt not downloaded")
+        pytest.skip("ppocrv6_dict.txt not downloaded")
     decoder = CTCLabelDecode(dict_path_obj)
     assert "blank" in decoder.character
     assert len(decoder.character) > 1000
@@ -208,8 +199,14 @@ def test_build_osd_detector_osd_text_keeps_fixed_region_mask(tmp_path, monkeypat
         def recognize(self, crops):
             return [("x", 1.0) for _ in crops]
 
-    monkeypatch.setattr("media_redact.detect.osd.factory.paths.default_text_det_model", lambda: det_path)
-    monkeypatch.setattr("media_redact.detect.osd.factory.paths.default_text_rec_model", lambda: rec_path)
+    monkeypatch.setattr(
+        "media_redact.detect.osd.factory.paths.default_text_det_model",
+        lambda _size="small": det_path,
+    )
+    monkeypatch.setattr(
+        "media_redact.detect.osd.factory.paths.default_text_rec_model",
+        lambda _size="small": rec_path,
+    )
     monkeypatch.setattr("media_redact.detect.osd.factory.paths.default_text_dict", lambda: dict_path)
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
@@ -276,16 +273,11 @@ def test_text_osd_detector_pipeline_order(tmp_path, monkeypatch):
 
     monkeypatch.setattr(detector, "_full_image_det", fake_full_image_det)
     monkeypatch.setattr(detector, "_apply_spatial_filters", fake_apply_spatial_filters)
-    monkeypatch.setattr(
-        detector.geometry_filter,
-        "filter_geometry",
-        lambda _image, regions: (calls.append("geometry") or regions),
-    )
 
     image = np.full((200, 200, 3), 255, dtype=np.uint8)
     result = detector.detect(image)
 
-    assert calls == ["det", "spatial", "geometry", "ocr"]
+    assert calls == ["det", "spatial", "ocr"]
     assert result == [inside]
 
 
@@ -322,14 +314,22 @@ def test_composite_osd_detector_merges_region_and_text():
 
 def test_create_processor_osd_band_requires_det_model(tmp_path, monkeypatch):
     missing = tmp_path / "missing.onnx"
-    monkeypatch.setattr("media_redact.paths.default_text_det_model", lambda: missing)
+    monkeypatch.setattr("media_redact.factory.ensure_ocr_models", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "media_redact.detect.osd.factory.paths.default_text_det_model",
+        lambda _size="small": missing,
+    )
     with pytest.raises(FileNotFoundError, match="Text detection model"):
         create_processor(osd_bands=["bottom:0.12"])
 
 
 def test_create_processor_osd_text_requires_models(tmp_path, monkeypatch):
     missing = tmp_path / "missing.onnx"
-    monkeypatch.setattr("media_redact.paths.default_text_det_model", lambda: missing)
+    monkeypatch.setattr("media_redact.factory.ensure_ocr_models", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "media_redact.detect.osd.factory.paths.default_text_det_model",
+        lambda _size="small": missing,
+    )
     with pytest.raises(FileNotFoundError, match="Text detection model"):
         create_processor(osd_text=[r"\d+"])
 

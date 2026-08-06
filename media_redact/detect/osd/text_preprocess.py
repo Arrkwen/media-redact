@@ -1,4 +1,4 @@
-"""PP-OCRv5 文字检测预处理。"""
+"""PP-OCRv6 文字检测预处理。"""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ import numpy as np
 
 
 class TextDetPreprocess:
-    """PP-OCRv5 mobile det 预处理。"""
+    """PP-OCRv6 det 预处理。"""
 
     def __init__(
         self,

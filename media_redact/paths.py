@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import Literal
 
 PACKAGE_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = PACKAGE_ROOT.parent
 
 MODEL_ROOT_ENV = "MEDIA_REDACT_MODEL_ROOT"
 DEFAULT_MODEL_SUBDIR = Path(".media_redact") / "models"
+
+TextModelSize = Literal["tiny", "small", "medium"]
+TEXT_MODEL_SIZES: tuple[TextModelSize, ...] = ("tiny", "small", "medium")
+DEFAULT_TEXT_MODEL_SIZE: TextModelSize = "small"
 
 DATA_DIR = PROJECT_ROOT / "assets" / "data"
 
@@ -26,16 +31,16 @@ def default_face_model() -> Path:
     return get_model_dir() / "face_det.onnx"
 
 
-def default_text_det_model() -> Path:
-    return get_model_dir() / "text_det.onnx"
+def default_text_det_model(size: TextModelSize = DEFAULT_TEXT_MODEL_SIZE) -> Path:
+    return get_model_dir() / f"text_det_{size}.onnx"
 
 
-def default_text_rec_model() -> Path:
-    return get_model_dir() / "text_rec.onnx"
+def default_text_rec_model(size: TextModelSize = DEFAULT_TEXT_MODEL_SIZE) -> Path:
+    return get_model_dir() / f"text_rec_{size}.onnx"
 
 
 def default_text_dict() -> Path:
-    return get_model_dir() / "ppocrv5_dict.txt"
+    return get_model_dir() / "ppocrv6_dict.txt"
 
 
 def resolve_path(path: str | Path) -> Path:
