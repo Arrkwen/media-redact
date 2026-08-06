@@ -16,7 +16,7 @@ from media_redact.paths import (
 )
 
 _GITHUB_RAW_BASE = (
-    "https://github.com/Arrkwen/media-redact/raw/main/assets/models"
+    "https://github.com/Arrkwen/media-redact/tree/master/assets/models"
 )
 _RAPIDOCR_BASE = "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.9.2"
 
