@@ -4,13 +4,13 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import pytest
 from media_redact.api import (
     _collect_files,
     _common_root,
     _resolve_output_path,
     redact_image,
 )
+from media_redact.paths import default_output_dir, resolve_output_dir
 
 
 def _write_image(path: Path) -> None:
@@ -67,18 +67,47 @@ def test_resolve_output_path_preserves_subdirs(tmp_path):
     output = _resolve_output_path(
         input_file.resolve(),
         input_root.resolve(),
-        output=None,
-        output_dir=output_dir,
-        single_input=False,
+        output_dir.resolve(),
     )
-    assert output == (output_dir / "sub" / "clip_redacted.jpg").resolve()
+    assert output == (output_dir / "sub" / "clip.jpg").resolve()
 
 
-def test_redact_image_directory_requires_output_dir(tmp_path):
+def test_resolve_output_path_single_file(tmp_path):
+    input_file = tmp_path / "photos" / "clip.jpg"
+    output_dir = tmp_path / "output_redact"
+
+    output = _resolve_output_path(
+        input_file.resolve(),
+        input_file.parent.resolve(),
+        output_dir.resolve(),
+    )
+    assert output == (output_dir / "clip.jpg").resolve()
+
+
+def test_default_output_dir_in_cwd(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert default_output_dir() == (tmp_path / "output_redact").resolve()
+    assert resolve_output_dir(None) == (tmp_path / "output_redact").resolve()
+    assert resolve_output_dir("custom") == (tmp_path / "custom").resolve()
+
+
+def test_redact_image_directory_uses_default_output(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
     _write_image(tmp_path / "in" / "clip.jpg")
 
-    with pytest.raises(ValueError, match="output_dir is required"):
-        redact_image(tmp_path / "in", face=True)
+    def fake_process_image(input_path, output_path, processor):
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        output_path.write_bytes(b"ok")
+
+    monkeypatch.setattr("media_redact.api.process_image", fake_process_image)
+    monkeypatch.setattr(
+        "media_redact.api.create_processor",
+        lambda **kwargs: object(),
+    )
+
+    results = redact_image(tmp_path / "in", face=True)
+    assert results == [(tmp_path / "output_redact" / "clip.jpg").resolve()]
+    assert results[0].exists()
 
 
 def test_redact_image_batch_preserves_tree(tmp_path, monkeypatch):
@@ -100,14 +129,14 @@ def test_redact_image_batch_preserves_tree(tmp_path, monkeypatch):
 
     results = redact_image(
         tmp_path / "in",
-        output_dir=output_dir,
+        output=output_dir,
         recursive=True,
         face=True,
     )
     assert results == sorted(
         [
-            (output_dir / "a" / "one_redacted.jpg").resolve(),
-            (output_dir / "b" / "two_redacted.jpg").resolve(),
+            (output_dir / "a" / "one.jpg").resolve(),
+            (output_dir / "b" / "two.jpg").resolve(),
         ]
     )
     assert all(path.exists() for path in results)
@@ -132,10 +161,10 @@ def test_redact_image_multiple_files(tmp_path, monkeypatch):
 
     results = redact_image(
         [input_a, input_b],
-        output_dir=output_dir,
+        output=output_dir,
         osd_regions=["0,0,1,1"],
     )
     assert results == [
-        (output_dir / "a_redacted.jpg").resolve(),
-        (output_dir / "b_redacted.jpg").resolve(),
+        (output_dir / "a.jpg").resolve(),
+        (output_dir / "b.jpg").resolve(),
     ]

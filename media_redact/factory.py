@@ -6,8 +6,8 @@ from media_redact.config import MaskMode, MaskShape, RedactConfig
 from media_redact.detect.face import FaceDetector
 from media_redact.detect.osd import build_osd_detector
 from media_redact.model import ensure_face_model, ensure_ocr_models
-from media_redact.pipeline.processor import RedactProcessor
 from media_redact.paths import TextModelSize
+from media_redact.pipeline.processor import RedactProcessor
 
 
 def create_processor(

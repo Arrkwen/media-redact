@@ -81,7 +81,7 @@ media-redact/
 
 ### v0.2 — 易用性
 
-- [x] 批量目录处理（CLI：`-o` 目录 + `--recursive`；API：`output_dir` + `recursive`）
+- [x] 批量目录处理（CLI：`-o` 输出目录 + `--recursive`；API：`output` + `recursive`）
 - [x] Python API：`redact_image()` / `redact_video()`
 - [x] 进度与日志完善（loguru + 批量文件进度条）
 

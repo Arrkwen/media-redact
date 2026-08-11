@@ -74,10 +74,10 @@ media-redact input_dir/ --face -o output_dir/ -r
 
 | 输入 | 默认输出 |
 | ---- | -------- |
-| 单文件 | `./{filename}_redacted.{ext}` |
-| 目录 | `./{dirname}_redacted/`（配合 `-r` 保留子目录结构） |
+| 单文件 / 文件列表 | `./output_redact/{原文件名}` |
+| 目录 | `./output_redact/`（配合 `-r` 保留子目录结构） |
 
-单文件时 `-o` 为输出**文件**；目录输入时 `-o` 为输出**目录**。
+`-o` 指定输出**目录**（默认 `./output_redact`），输出文件名与输入相同。
 
 ## 打码模式
 
@@ -202,7 +202,6 @@ redact_image(
     inputs,
     output=None,
     *,
-    output_dir=None,
     recursive=False,
     face=False,
     face_threshold=0.3,
@@ -229,14 +228,16 @@ from media_redact import redact_image, redact_video
 # setup_logging("INFO")  # DEBUG / INFO / WARNING / ERROR
 
 
-# 单文件
+# 单文件（默认输出 ./output_redact/photo.jpg）
 redact_image("photo.jpg", face=True)
-redact_image("photo.jpg", "out.jpg", face=True)
 
-# 目录批处理（使用 output_dir，保留目录结构）
+# 指定输出目录
+redact_image("photo.jpg", output="out/", face=True)
+
+# 目录批处理（保留目录结构）
 redact_image(
     "input_dir/",
-    output_dir="output_dir/",
+    output="output_dir/",
     recursive=True,
     face=True,
     face_threshold=0.3,
@@ -245,14 +246,14 @@ redact_image(
 # 多文件
 redact_image(
     ["a.jpg", "b.jpg"],
-    output_dir="output_dir/",
+    output="output_dir/",
     osd_regions=["0,972;1920,972;1920,1080;0,1080"],
 )
 
 # 视频
 redact_video(
     "input_videos/",
-    output_dir="output_videos/",
+    output="output_videos/",
     recursive=True,
     face=True,
     osd_bands=["bottom:0.12"],
@@ -261,7 +262,7 @@ redact_video(
 )
 ```
 
-CLI 用 `-o` 统一指定文件或目录输出；Python API 中单文件用 `output`，批处理用 `output_dir`。
+CLI 与 Python API 均使用 ``output`` 指定输出目录；省略时默认为 ``./output_redact/``。
 
 ## 延伸阅读
 

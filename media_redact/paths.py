@@ -16,6 +16,8 @@ TextModelSize = Literal["tiny", "small", "medium"]
 TEXT_MODEL_SIZES: tuple[TextModelSize, ...] = ("tiny", "small", "medium")
 DEFAULT_TEXT_MODEL_SIZE: TextModelSize = "small"
 
+DEFAULT_OUTPUT_DIR_NAME = "output_redact"
+
 DATA_DIR = PROJECT_ROOT / "assets" / "data"
 
 
@@ -76,7 +78,16 @@ def resolve_input_path(path: str | Path) -> Path:
     )
 
 
-def default_output_path(input_path: Path) -> Path:
-    """默认输出到当前工作目录：{stem}_redacted{suffix}。"""
-    filename = f"{input_path.stem}_redacted{input_path.suffix}"
-    return Path.cwd() / filename
+def default_output_dir() -> Path:
+    """默认输出目录：当前工作目录下的 ``output_redact/``。"""
+    return (Path.cwd() / DEFAULT_OUTPUT_DIR_NAME).resolve()
+
+
+def resolve_output_dir(output: str | Path | None) -> Path:
+    """解析输出目录；``None`` 时使用 :func:`default_output_dir`。"""
+    if output is None:
+        return default_output_dir()
+    path = Path(output).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    return path.resolve()

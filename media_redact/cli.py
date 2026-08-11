@@ -11,7 +11,7 @@ from media_redact import __version__
 from media_redact.api import redact_image, redact_video
 from media_redact.io.files import get_file_type
 from media_redact.log import logger, setup_logging
-from media_redact.paths import resolve_input_path, resolve_path
+from media_redact.paths import resolve_input_path, resolve_output_dir
 
 _BATCH_EMPTY_IMAGE_MSG = "No images found in the given inputs."
 _BATCH_EMPTY_VIDEO_MSG = "No videos found in the given inputs."
@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
         "-o",
         "--output",
         default=None,
-        help="Output file or directory (matches input type; directory preserves layout)",
+        help="Output directory (default: ./output_redact)",
     )
     parser.add_argument(
         "-r",
@@ -148,26 +148,10 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _resolve_output(args: argparse.Namespace, input_path: Path) -> tuple[Path | None, Path | None]:
-    """Map ``--output`` to API ``output`` (file) or ``output_dir`` (directory)."""
-    if args.output is None:
-        if input_path.is_dir():
-            return None, Path.cwd() / f"{input_path.name}_redacted"
-        return None, None
-
-    output_path = Path(args.output)
-    if not output_path.is_absolute():
-        output_path = resolve_path(output_path)
-
-    if input_path.is_dir():
-        return None, output_path
-    return output_path, None
-
-
 def _redact_directory(
     input_path: Path,
     *,
-    output_dir: Path,
+    output: Path,
     recursive: bool,
     redact_kwargs: dict,
     keep_audio: bool,
@@ -175,7 +159,7 @@ def _redact_directory(
     results: list[Path] = []
     batch_kwargs = {
         **redact_kwargs,
-        "output_dir": output_dir,
+        "output": output,
         "recursive": recursive,
     }
 
@@ -215,7 +199,7 @@ def main() -> None:
 
     try:
         input_path = resolve_input_path(args.input)
-        output, output_dir = _resolve_output(args, input_path)
+        output = resolve_output_dir(args.output)
     except (FileNotFoundError, ValueError) as exc:
         logger.error("{}", exc)
         sys.exit(1)
@@ -241,7 +225,7 @@ def main() -> None:
         if input_path.is_dir():
             results = _redact_directory(
                 input_path,
-                output_dir=output_dir,  # type: ignore[arg-type]
+                output=output,
                 recursive=args.recursive,
                 redact_kwargs=redact_kwargs,
                 keep_audio=args.keep_audio,
@@ -256,7 +240,6 @@ def main() -> None:
                 results = redact_image(
                     input_path,
                     output,
-                    output_dir=output_dir,
                     recursive=args.recursive,
                     **redact_kwargs,
                 )
@@ -264,7 +247,6 @@ def main() -> None:
                 results = redact_video(
                     input_path,
                     output,
-                    output_dir=output_dir,
                     recursive=args.recursive,
                     keep_audio=args.keep_audio,
                     **redact_kwargs,
@@ -274,11 +256,11 @@ def main() -> None:
         sys.exit(1)
 
     logger.info("Input:  {}", input_path)
-    if len(results) == 1:
-        logger.info("Output: {}", results[0])
-    else:
-        logger.info("Output dir: {}", output_dir or results[0].parent)
+    logger.info("Output dir: {}", output)
+    if len(results) != 1:
         logger.info("Processed {} file(s)", len(results))
+    else:
+        logger.info("Output file: {}", results[0])
     logger.success("Done.")
 
 

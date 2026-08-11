@@ -76,13 +76,13 @@ media-redact input_dir/ --face -o output_dir/ -r
 **Output defaults**
 
 
-| Input       | Default output                                                    |
-| ----------- | ----------------------------------------------------------------- |
-| Single file | `./{filename}_redacted.{ext}`                                     |
-| Directory   | `./{dirname}_redacted/` (preserves subdirectory layout with `-r`) |
+| Input              | Default output                                      |
+| ------------------ | --------------------------------------------------- |
+| Single file / list | `./output_redact/{original filename}`               |
+| Directory          | `./output_redact/` (use `-r` to preserve subfolders) |
 
 
-For a single file, `-o` is an output **file**; for a directory, `-o` is an output **directory**.
+`-o` sets the output **directory** (default `./output_redact`); output filenames match the inputs.
 
 ## Redaction Modes
 
@@ -217,7 +217,6 @@ redact_image(
     inputs,
     output=None,
     *,
-    output_dir=None,
     recursive=False,
     face=False,
     face_threshold=0.3,
@@ -244,14 +243,16 @@ from media_redact import redact_image, redact_video
 # setup_logging("INFO")  # DEBUG / INFO / WARNING / ERROR
 
 
-# Single file
+# Single file (default: ./output_redact/photo.jpg)
 redact_image("photo.jpg", face=True)
-redact_image("photo.jpg", "out.jpg", face=True)
 
-# Directory batch (use output_dir; preserves layout)
+# Custom output directory
+redact_image("photo.jpg", output="out/", face=True)
+
+# Directory batch (preserves layout)
 redact_image(
     "input_dir/",
-    output_dir="output_dir/",
+    output="output_dir/",
     recursive=True,
     face=True,
     face_threshold=0.3,
@@ -260,14 +261,14 @@ redact_image(
 # Multiple files
 redact_image(
     ["a.jpg", "b.jpg"],
-    output_dir="output_dir/",
+    output="output_dir/",
     osd_regions=["0,972;1920,972;1920,1080;0,1080"],
 )
 
 # Video
 redact_video(
     "input_videos/",
-    output_dir="output_videos/",
+    output="output_videos/",
     recursive=True,
     face=True,
     osd_bands=["bottom:0.12"],
@@ -276,7 +277,7 @@ redact_video(
 )
 ```
 
-CLI uses `-o` for both file and directory output; the Python API uses `output` (single file) and `output_dir` (batch).
+Both CLI and Python API use ``output`` as the output directory; default is ``./output_redact/``.
 
 ## Further Reading
 

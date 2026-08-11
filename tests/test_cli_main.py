@@ -1,8 +1,7 @@
 """CLI integration tests."""
 
-from pathlib import Path
-
 import sys
+from pathlib import Path
 
 from media_redact.cli import main
 
@@ -18,11 +17,11 @@ def test_cli_directory_batch_calls_api(tmp_path, monkeypatch):
 
     def fake_redact_image(inputs, output=None, **kwargs):
         calls.append(("image", {"inputs": inputs, "output": output, **kwargs}))
-        return [Path(kwargs["output_dir"]) / "one_redacted.jpg"]
+        return [Path(output) / "a" / "one.jpg"]
 
     def fake_redact_video(inputs, output=None, **kwargs):
         calls.append(("video", {"inputs": inputs, "output": output, **kwargs}))
-        return [Path(kwargs["output_dir"]) / "clip_redacted.mp4"]
+        return [Path(output) / "clip.mp4"]
 
     monkeypatch.setattr(sys, "argv", ["media-redact", str(input_dir), "--face", "-r"])
     monkeypatch.setattr("media_redact.cli.redact_image", fake_redact_image)
@@ -34,7 +33,7 @@ def test_cli_directory_batch_calls_api(tmp_path, monkeypatch):
     assert calls[0][0] == "image"
     assert calls[1][0] == "video"
     assert calls[0][1]["recursive"] is True
-    assert calls[0][1]["output_dir"] == Path.cwd() / "photos_redacted"
+    assert calls[0][1]["output"] == Path.cwd() / "output_redact"
 
 
 def test_cli_directory_with_output(tmp_path, monkeypatch):
@@ -46,8 +45,8 @@ def test_cli_directory_with_output(tmp_path, monkeypatch):
     captured: dict = {}
 
     def fake_redact_image(inputs, output=None, **kwargs):
-        captured.update(kwargs)
-        return [output_dir / "a_redacted.jpg"]
+        captured.update({"output": output, **kwargs})
+        return [output_dir / "a.jpg"]
 
     monkeypatch.setattr(
         sys,
@@ -70,4 +69,4 @@ def test_cli_directory_with_output(tmp_path, monkeypatch):
 
     main()
 
-    assert captured["output_dir"] == output_dir.resolve()
+    assert captured["output"] == output_dir.resolve()

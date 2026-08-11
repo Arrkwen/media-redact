@@ -9,7 +9,6 @@ from pathlib import Path
 import cv2
 import imageio.v3 as iio
 import numpy as np
-
 from media_redact.detect.base import MaskRegion
 from media_redact.factory import create_processor
 from media_redact.mask.applicator import apply_masks

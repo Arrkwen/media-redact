@@ -43,14 +43,9 @@ def test_resolve_path_relative():
     assert resolved.name == "data"
 
 
-def test_default_output_path_in_cwd(tmp_path, monkeypatch):
-    from media_redact.paths import default_output_path
+def test_default_output_dir_in_cwd(tmp_path, monkeypatch):
+    from media_redact.paths import default_output_dir, resolve_output_dir
 
     monkeypatch.chdir(tmp_path)
-    input_file = tmp_path / "nested" / "clip.mp4"
-    input_file.parent.mkdir(parents=True)
-    input_file.touch()
-
-    output = default_output_path(input_file.resolve())
-    assert output.parent == tmp_path.resolve()
-    assert output.name == "clip_redacted.mp4"
+    assert default_output_dir() == (tmp_path / "output_redact").resolve()
+    assert resolve_output_dir("custom") == (tmp_path / "custom").resolve()

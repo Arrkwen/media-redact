@@ -12,7 +12,7 @@ from media_redact.config import MaskMode, MaskShape
 from media_redact.factory import create_processor
 from media_redact.io.files import get_file_type
 from media_redact.log import ensure_logging, logger
-from media_redact.paths import TextModelSize, default_output_path
+from media_redact.paths import TextModelSize, resolve_output_dir
 from media_redact.pipeline.image import process_image
 from media_redact.pipeline.processor import RedactProcessor
 from media_redact.pipeline.video import process_video
@@ -95,48 +95,13 @@ def _collect_files(
     return unique_files, input_root, has_directory_input
 
 
-def _redacted_name(path: Path) -> str:
-    return f"{path.stem}_redacted{path.suffix}"
-
-
 def _resolve_output_path(
     input_file: Path,
     input_root: Path,
-    *,
-    output: Path | None,
-    output_dir: Path | None,
-    single_input: bool,
+    output: Path,
 ) -> Path:
-    if single_input and output is not None:
-        return output.expanduser().resolve()
-
-    if output_dir is not None:
-        output_root = output_dir.expanduser().resolve()
-        relative = input_file.relative_to(input_root)
-        return output_root / relative.parent / _redacted_name(input_file)
-
-    if not single_input:
-        raise ValueError(
-            "output_dir is required when processing multiple inputs.")
-
-    return default_output_path(input_file)
-
-
-def _validate_output_args(
-    input_files: Sequence[Path],
-    *,
-    output: Path | None,
-    output_dir: Path | None,
-    has_directory_input: bool,
-) -> None:
-    if len(input_files) > 1 and output is not None:
-        raise ValueError(
-            "output applies to a single input only; use output_dir for batch processing."
-        )
-    if (has_directory_input or len(input_files) > 1) and output_dir is None:
-        raise ValueError(
-            "output_dir is required when input is a directory or contains multiple files."
-        )
+    relative = input_file.relative_to(input_root)
+    return output / relative.parent / input_file.name
 
 
 def _run_redact(
@@ -201,7 +166,6 @@ def redact_image(
     inputs: InputSpec,
     output: str | Path | None = None,
     *,
-    output_dir: str | Path | None = None,
     recursive: bool = False,
     face: bool = False,
     face_threshold: float = 0.3,
@@ -221,30 +185,15 @@ def redact_image(
     """
     对图片打码。支持单文件、多文件或目录；目录可递归处理。
 
-    批量处理时通过 ``output_dir`` 指定输出根目录，保留相对 ``input_root`` 的子目录结构，
-    文件名追加 ``_redacted`` 后缀。
+    输出写入 ``output`` 目录（默认 ``./output_redact/``），保留相对输入根的子目录结构，
+    文件名与输入相同。
     """
-    input_files, input_root, has_directory_input = _collect_files(
+    input_files, input_root, _has_directory_input = _collect_files(
         inputs, "image", recursive=recursive
     )
-    out = Path(output) if output is not None else None
-    out_dir = Path(output_dir) if output_dir is not None else None
-    _validate_output_args(
-        input_files,
-        output=out,
-        output_dir=out_dir,
-        has_directory_input=has_directory_input,
-    )
-
-    single_input = len(input_files) == 1
+    output_root = resolve_output_dir(output)
     output_paths = [
-        _resolve_output_path(
-            input_file,
-            input_root,
-            output=out,
-            output_dir=out_dir,
-            single_input=single_input,
-        )
+        _resolve_output_path(input_file, input_root, output_root)
         for input_file in input_files
     ]
 
@@ -278,7 +227,6 @@ def redact_video(
     inputs: InputSpec,
     output: str | Path | None = None,
     *,
-    output_dir: str | Path | None = None,
     recursive: bool = False,
     face: bool = False,
     face_threshold: float = 0.3,
@@ -299,30 +247,15 @@ def redact_video(
     """
     对视频打码。支持单文件、多文件或目录；目录可递归处理。
 
-    批量处理时通过 ``output_dir`` 指定输出根目录，保留相对 ``input_root`` 的子目录结构，
-    文件名追加 ``_redacted`` 后缀。
+    输出写入 ``output`` 目录（默认 ``./output_redact/``），保留相对输入根的子目录结构，
+    文件名与输入相同。
     """
-    input_files, input_root, has_directory_input = _collect_files(
+    input_files, input_root, _has_directory_input = _collect_files(
         inputs, "video", recursive=recursive
     )
-    out = Path(output) if output is not None else None
-    out_dir = Path(output_dir) if output_dir is not None else None
-    _validate_output_args(
-        input_files,
-        output=out,
-        output_dir=out_dir,
-        has_directory_input=has_directory_input,
-    )
-
-    single_input = len(input_files) == 1
+    output_root = resolve_output_dir(output)
     output_paths = [
-        _resolve_output_path(
-            input_file,
-            input_root,
-            output=out,
-            output_dir=out_dir,
-            single_input=single_input,
-        )
+        _resolve_output_path(input_file, input_root, output_root)
         for input_file in input_files
     ]
 

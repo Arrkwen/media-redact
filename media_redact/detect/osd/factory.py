@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from media_redact import paths
-from media_redact.paths import TextModelSize
 from media_redact.detect.osd.bands import parse_osd_band
 from media_redact.detect.osd.composite import CompositeOSDDetector
 from media_redact.detect.osd.text_detector import TextOSDDetector
 from media_redact.detect.osd.text_filter import TextFilterConfig, TextRegionFilter
+from media_redact.paths import TextModelSize
 
 
 def build_osd_detector(

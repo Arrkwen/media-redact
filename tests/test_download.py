@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from media_redact.model.assets import (
     _download_to,
     _face_asset,
