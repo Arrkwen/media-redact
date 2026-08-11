@@ -22,7 +22,7 @@
 - **Band 区域 OSD**：通过 `--osd-band` 限定上下/左右 band，检测 band 内文字并全部打码
 - **文字正则匹配 OSD**：PP-OCRv6 检测 + OCR，仅打码 `--osd-text` 正则匹配的识别文本
 - **区域标注**：配套 Web 工具 `media-region`，在浏览器中画框/画线获取坐标与 band 比例
-- **Python API 与 CLI 批处理**：支持目录批量处理并保留子目录结构（`-o` / `--output`、`--recursive`）
+- **Python API 与 CLI 批处理**：支持目录批量处理并保留子目录结构（默认递归；`-o` / `--output`，`--no-recursive` 可关闭）
 
 
 ## 用户指南

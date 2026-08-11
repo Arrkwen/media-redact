@@ -64,9 +64,12 @@ media-redact video.mp4 --osd-text '\d{4}-\d{2}-\d{2}'
 # Combine modes
 media-redact video.mp4 --face --osd-region 19,993,480,1079 --osd-band bottom:0.12
 
-# Directory batch
-media-redact photos/ --face -r
-media-redact input_dir/ --face -o output_dir/ -r
+# Directory batch (recursive by default)
+media-redact photos/ --face
+media-redact input_dir/ --face -o output_dir/
+
+# Top-level files only (no subdirectories)
+media-redact photos/ --face --no-recursive
 ```
 
 **Output defaults**
@@ -75,7 +78,7 @@ media-redact input_dir/ --face -o output_dir/ -r
 | Input              | Default output                                      |
 | ------------------ | --------------------------------------------------- |
 | Single file / list | `./output_redact/{original filename}`               |
-| Directory          | `./output_redact/` (use `-r` to preserve subfolders) |
+| Directory          | `./output_redact/` (recursive by default; preserves subfolders) |
 
 
 `-o` sets the output **directory** (default `./output_redact`); output filenames match the inputs.
@@ -154,7 +157,7 @@ Multiple `--osd-text` patterns use **OR** matching.
 ## CLI Reference
 
 ```
-usage: media-redact [-h] [-o OUTPUT] [-r]
+usage: media-redact [-h] [-o OUTPUT] [-r | --no-recursive]
                     [--face] [--face-threshold FACE_THRESHOLD]
                     [--osd-region SPEC] [--osd-band SPEC] [--osd-text REGEX]
                     [--mask {blur,mosaic,solid,none}] [--mask-shape {ellipse,polygon}]
@@ -249,14 +252,16 @@ redact_image("photo.jpg", face=True)
 # Custom output directory
 redact_image("photo.jpg", output="out/", face=True)
 
-# Directory batch (preserves layout)
+# Directory batch (recursive by default; preserves layout)
 redact_image(
     "input_dir/",
     output="output_dir/",
-    recursive=True,
     face=True,
     face_threshold=0.3,
 )
+
+# Top-level directory only
+redact_image("input_dir/", output="output_dir/", recursive=False, face=True)
 
 # Multiple files
 redact_image(
@@ -265,11 +270,10 @@ redact_image(
     osd_regions=["0,972;1920,972;1920,1080;0,1080"],
 )
 
-# Video
+# Video (directory input is recursive by default)
 redact_video(
     "input_videos/",
     output="output_videos/",
-    recursive=True,
     face=True,
     osd_bands=["bottom:0.12"],
     osd_text=[r"\d{4}-\d{2}-\d{2}"],

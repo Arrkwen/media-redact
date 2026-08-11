@@ -58,9 +58,12 @@ media-redact video.mp4 --osd-text '\d{4}-\d{2}-\d{2}'
 # 组合多种模式
 media-redact video.mp4 --face --osd-region 19,993,480,1079 --osd-band bottom:0.12
 
-# 目录批处理
-media-redact photos/ --face -r
-media-redact input_dir/ --face -o output_dir/ -r
+# 目录批处理（默认递归子目录）
+media-redact photos/ --face
+media-redact input_dir/ --face -o output_dir/
+
+# 仅处理当前目录，不进入子目录
+media-redact photos/ --face --no-recursive
 ```
 
 **默认输出**
@@ -68,7 +71,7 @@ media-redact input_dir/ --face -o output_dir/ -r
 | 输入 | 默认输出 |
 | ---- | -------- |
 | 单文件 / 文件列表 | `./output_redact/{原文件名}` |
-| 目录 | `./output_redact/`（配合 `-r` 保留子目录结构） |
+| 目录 | `./output_redact/`（默认递归，保留子目录结构） |
 
 `-o` 指定输出**目录**（默认 `./output_redact`），输出文件名与输入相同。
 
@@ -140,7 +143,7 @@ media-redact video.mp4 \
 ## CLI 参考
 
 ```
-usage: media-redact [-h] [-o OUTPUT] [-r]
+usage: media-redact [-h] [-o OUTPUT] [-r | --no-recursive]
                     [--face] [--face-threshold FACE_THRESHOLD]
                     [--osd-region SPEC] [--osd-band SPEC] [--osd-text REGEX]
                     [--mask {blur,mosaic,solid,none}] [--mask-shape {ellipse,polygon}]
@@ -231,14 +234,16 @@ redact_image("photo.jpg", face=True)
 # 指定输出目录
 redact_image("photo.jpg", output="out/", face=True)
 
-# 目录批处理（保留目录结构）
+# 目录批处理（默认递归，保留目录结构）
 redact_image(
     "input_dir/",
     output="output_dir/",
-    recursive=True,
     face=True,
     face_threshold=0.3,
 )
+
+# 仅当前目录
+redact_image("input_dir/", output="output_dir/", recursive=False, face=True)
 
 # 多文件
 redact_image(
@@ -247,11 +252,10 @@ redact_image(
     osd_regions=["0,972;1920,972;1920,1080;0,1080"],
 )
 
-# 视频
+# 视频（目录输入默认递归）
 redact_video(
     "input_videos/",
     output="output_videos/",
-    recursive=True,
     face=True,
     osd_bands=["bottom:0.12"],
     osd_text=[r"\d{4}-\d{2}-\d{2}"],

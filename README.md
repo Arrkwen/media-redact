@@ -25,7 +25,7 @@ See [docs/ROADMAP.md](docs/ROADMAP.md).
 - **Band OSD regions**: Limit text detection to top/bottom/left/right bands via `--osd-band`; redact all detected text in band
 - **OSD text regex match**: PP-OCRv6 detection + OCR; redact only boxes whose recognized text matches `--osd-text` patterns
 - **Region annotation**: Companion web tool `media-region` for drawing regions and band ratios in a browser
-- **Python API & CLI batch**: Process directories with preserved layout (`-o` / `--output`, `--recursive`)
+- **Python API & CLI batch**: Process directories with preserved layout (recursive by default; `-o` / `--output`, use `--no-recursive` to disable)
 
 ## User guide
 
