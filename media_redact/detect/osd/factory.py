@@ -9,6 +9,7 @@ from media_redact.detect.osd.bands import parse_osd_band
 from media_redact.detect.osd.composite import CompositeOSDDetector
 from media_redact.detect.osd.text_detector import TextOSDDetector
 from media_redact.detect.osd.text_filter import TextFilterConfig, TextRegionFilter
+from media_redact.model.onnx_runtime import DeviceKind
 from media_redact.paths import TextModelSize
 
 
@@ -24,6 +25,7 @@ def build_osd_detector(
     text_det_model_path: Path | None = None,
     text_rec_model_path: Path | None = None,
     text_dict_path: Path | None = None,
+    device: DeviceKind | str = "auto",
 ) -> CompositeOSDDetector | None:
     has_pattern_osd = bool(osd_text)
     has_band_osd = bool(osd_bands)
@@ -48,6 +50,7 @@ def build_osd_detector(
             box_threshold=osd_text_box_threshold,
             rec_score_threshold=osd_text_rec_threshold,
             pattern_filter=pattern_filter,
+            device=device,
         )
 
     return CompositeOSDDetector.from_parts(

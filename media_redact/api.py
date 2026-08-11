@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal
 
@@ -12,8 +12,10 @@ from media_redact.config import MaskMode, MaskShape
 from media_redact.factory import create_processor
 from media_redact.io.files import get_file_type
 from media_redact.log import ensure_logging, logger
+from media_redact.model.onnx_runtime import DeviceKind
 from media_redact.paths import TextModelSize, resolve_output_dir
-from media_redact.pipeline.image import process_image
+from media_redact.pipeline.frame_pipeline import DEFAULT_NUM_WORKER
+from media_redact.pipeline.image import process_images
 from media_redact.pipeline.processor import RedactProcessor
 from media_redact.pipeline.video import process_video
 
@@ -106,13 +108,13 @@ def _resolve_output_path(
 
 def _run_redact(
     input_files: Sequence[Path],
-    input_root: Path,
     output_paths: Sequence[Path],
     processor: RedactProcessor,
     *,
     media_kind: MediaKind,
     keep_audio: bool,
     disable_progress: bool,
+    num_worker: int = DEFAULT_NUM_WORKER,
 ) -> list[Path]:
     ensure_logging()
     batch_mode = len(input_files) > 1
@@ -120,7 +122,6 @@ def _run_redact(
     logger.info("Found {} {} to process", len(input_files), label)
 
     pairs = list(zip(input_files, output_paths, strict=True))
-    iterator: Iterable[tuple[Path, Path]] = pairs
     file_bar: tqdm.tqdm | None = None
 
     if batch_mode and not disable_progress:
@@ -133,16 +134,30 @@ def _run_redact(
 
     results: list[Path] = []
     try:
-        for index, (input_file, output_file) in enumerate(iterator, start=1):
+        if media_kind == "image":
+            def _on_image_done() -> None:
+                if file_bar is not None:
+                    file_bar.update(1)
+
             if file_bar is not None:
-                file_bar.set_description(
-                    f"Redacting {label} ({index}/{len(input_files)})")
+                file_bar.set_description(f"Redacting {label}")
                 file_bar.refresh()
 
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            if media_kind == "image":
-                process_image(input_file, output_file, processor)
-            else:
+            process_images(
+                pairs,
+                processor,
+                num_worker=num_worker,
+                on_frame_done=_on_image_done if file_bar is not None else None,
+            )
+            results.extend(output_paths)
+        else:
+            for index, (input_file, output_file) in enumerate(pairs, start=1):
+                if file_bar is not None:
+                    file_bar.set_description(
+                        f"Redacting {label} ({index}/{len(input_files)})")
+                    file_bar.refresh()
+
+                output_file.parent.mkdir(parents=True, exist_ok=True)
                 process_video(
                     input_file,
                     output_file,
@@ -150,10 +165,11 @@ def _run_redact(
                     keep_audio=keep_audio,
                     disable_progress=disable_progress or batch_mode,
                     progress_position=1 if batch_mode and not disable_progress else None,
+                    num_worker=num_worker,
                 )
-            results.append(output_file)
-            if file_bar is not None:
-                file_bar.update(1)
+                results.append(output_file)
+                if file_bar is not None:
+                    file_bar.update(1)
     finally:
         if file_bar is not None:
             file_bar.close()
@@ -180,6 +196,8 @@ def redact_image(
     mask_shape: MaskShape = "polygon",
     mask_scale: float = 1.3,
     mosaic_size: int = 20,
+    device: DeviceKind | str = "auto",
+    num_worker: int = DEFAULT_NUM_WORKER,
     disable_progress: bool = False,
 ) -> list[Path]:
     """
@@ -211,15 +229,16 @@ def redact_image(
         mask_shape=mask_shape,
         mask_scale=mask_scale,
         mosaic_size=mosaic_size,
+        device=device,
     )
     return _run_redact(
         input_files,
-        input_root,
         output_paths,
         processor,
         media_kind="image",
         keep_audio=False,
         disable_progress=disable_progress,
+        num_worker=num_worker,
     )
 
 
@@ -242,6 +261,8 @@ def redact_video(
     mask_scale: float = 1.3,
     mosaic_size: int = 20,
     keep_audio: bool = False,
+    device: DeviceKind | str = "auto",
+    num_worker: int = DEFAULT_NUM_WORKER,
     disable_progress: bool = False,
 ) -> list[Path]:
     """
@@ -274,13 +295,14 @@ def redact_video(
         mask_scale=mask_scale,
         mosaic_size=mosaic_size,
         keep_audio=keep_audio,
+        device=device,
     )
     return _run_redact(
         input_files,
-        input_root,
         output_paths,
         processor,
         media_kind="video",
         keep_audio=keep_audio,
         disable_progress=disable_progress,
+        num_worker=num_worker,
     )

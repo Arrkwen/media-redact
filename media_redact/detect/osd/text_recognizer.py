@@ -10,6 +10,7 @@ import numpy as np
 
 from media_redact.detect.osd.onnx_utils import load_onnx_session
 from media_redact.detect.osd.text_rec_postprocess import CTCLabelDecode
+from media_redact.model.onnx_runtime import DeviceKind
 
 
 class TextRecognizer:
@@ -22,6 +23,7 @@ class TextRecognizer:
         *,
         rec_image_shape: tuple[int, int, int] = (3, 48, 320),
         batch_size: int = 8,
+        device: DeviceKind | str = "auto",
     ) -> None:
         path = Path(model_path)
         dictionary = Path(dict_path)
@@ -30,7 +32,11 @@ class TextRecognizer:
         if not dictionary.exists():
             raise FileNotFoundError(f"Text recognition dictionary not found: {dictionary}")
 
-        self._session = load_onnx_session(path, model_label="text recognition")
+        self._session = load_onnx_session(
+            path,
+            model_label="text recognition",
+            device=device,
+        )
         self.input_name = self._session.get_inputs()[0].name
         self.rec_image_shape = rec_image_shape
         self.batch_size = batch_size

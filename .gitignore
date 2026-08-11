@@ -8,6 +8,7 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+output_redact/
 # Local OCR cache under package dir (legacy dev layout)
 media_redact/model/*.onnx
 media_redact/model/*.txt

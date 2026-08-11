@@ -95,11 +95,12 @@ def test_redact_image_directory_uses_default_output(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     _write_image(tmp_path / "in" / "clip.jpg")
 
-    def fake_process_image(input_path, output_path, processor):
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(b"ok")
+    def fake_process_images(pairs, processor, **kwargs):
+        for _input_path, output_path in pairs:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"ok")
 
-    monkeypatch.setattr("media_redact.api.process_image", fake_process_image)
+    monkeypatch.setattr("media_redact.api.process_images", fake_process_images)
     monkeypatch.setattr(
         "media_redact.api.create_processor",
         lambda **kwargs: object(),
@@ -117,11 +118,12 @@ def test_redact_image_batch_preserves_tree(tmp_path, monkeypatch):
     _write_image(input_b)
     output_dir = tmp_path / "out"
 
-    def fake_process_image(input_path, output_path, processor):
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(b"ok")
+    def fake_process_images(pairs, processor, **kwargs):
+        for _input_path, output_path in pairs:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"ok")
 
-    monkeypatch.setattr("media_redact.api.process_image", fake_process_image)
+    monkeypatch.setattr("media_redact.api.process_images", fake_process_images)
     monkeypatch.setattr(
         "media_redact.api.create_processor",
         lambda **kwargs: object(),
@@ -149,11 +151,12 @@ def test_redact_image_multiple_files(tmp_path, monkeypatch):
     _write_image(input_b)
     output_dir = tmp_path / "out"
 
-    def fake_process_image(input_path, output_path, processor):
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        output_path.write_bytes(b"ok")
+    def fake_process_images(pairs, processor, **kwargs):
+        for _input_path, output_path in pairs:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"ok")
 
-    monkeypatch.setattr("media_redact.api.process_image", fake_process_image)
+    monkeypatch.setattr("media_redact.api.process_images", fake_process_images)
     monkeypatch.setattr(
         "media_redact.api.create_processor",
         lambda **kwargs: object(),
@@ -168,3 +171,24 @@ def test_redact_image_multiple_files(tmp_path, monkeypatch):
         (output_dir / "a.jpg").resolve(),
         (output_dir / "b.jpg").resolve(),
     ]
+
+
+def test_redact_image_passes_num_worker(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_image(tmp_path / "photo.jpg")
+    captured: dict = {}
+
+    def fake_process_images(pairs, processor, **kwargs):
+        captured.update(kwargs)
+        for _input_path, output_path in pairs:
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_bytes(b"ok")
+
+    monkeypatch.setattr("media_redact.api.process_images", fake_process_images)
+    monkeypatch.setattr(
+        "media_redact.api.create_processor",
+        lambda **kwargs: object(),
+    )
+
+    redact_image(tmp_path / "photo.jpg", face=True, num_worker=8)
+    assert captured["num_worker"] == 8

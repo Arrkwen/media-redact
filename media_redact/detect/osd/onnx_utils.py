@@ -4,19 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from media_redact.model.onnx_runtime import DeviceKind, create_inference_session
 
-def load_onnx_session(path: Path, *, model_label: str):
-    import onnxruntime as ort
 
-    providers = ort.get_available_providers()
-    try:
-        return ort.InferenceSession(str(path), providers=providers)
-    except Exception as exc:
-        message = str(exc)
-        if "Unsupported model IR version" in message:
-            raise RuntimeError(
-                f"Failed to load {model_label} model {path}. "
-                "PP-OCRv6 ONNX models require onnxruntime>=1.18. "
-                f"Original error: {exc}"
-            ) from exc
-        raise
+def load_onnx_session(
+    path: Path,
+    *,
+    model_label: str,
+    device: DeviceKind | str = "auto",
+):
+    return create_inference_session(path, model_label=model_label, device=device)

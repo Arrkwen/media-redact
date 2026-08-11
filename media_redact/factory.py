@@ -6,6 +6,7 @@ from media_redact.config import MaskMode, MaskShape, RedactConfig
 from media_redact.detect.face import FaceDetector
 from media_redact.detect.osd import build_osd_detector
 from media_redact.model import ensure_face_model, ensure_ocr_models
+from media_redact.model.onnx_runtime import DeviceKind
 from media_redact.paths import TextModelSize
 from media_redact.pipeline.processor import RedactProcessor
 
@@ -26,6 +27,7 @@ def create_processor(
     mask_scale: float = 1.3,
     mosaic_size: int = 20,
     keep_audio: bool = False,
+    device: DeviceKind | str = "auto",
 ) -> RedactProcessor:
     has_region_osd = bool(osd_regions)
     has_text_osd = bool(osd_text or osd_bands)
@@ -52,6 +54,7 @@ def create_processor(
         face_detector = FaceDetector(
             ensure_face_model(),
             score_threshold=config.face_threshold,
+            device=device,
         )
 
     if has_text_osd:
@@ -65,6 +68,7 @@ def create_processor(
         osd_text_rec_threshold=osd_text_rec_threshold,
         osd_text_model_size=osd_text_model_size,
         osd_text=osd_text if osd_text else None,
+        device=device,
     )
 
     return RedactProcessor(config, face_detector, osd_detector)

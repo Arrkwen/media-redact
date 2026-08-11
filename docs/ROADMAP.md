@@ -97,11 +97,11 @@ media-redact/
 
 ### v0.4 — 性能优化
 
-- [ ] GPU 推理（onnxruntime CUDA EP）
-- [ ] 视频人脸 tracking（跨帧复用 bbox）
-- [ ] 多线程/异步 IO
+- [x] GPU 推理（onnxruntime CUDA EP）
+- [x] 多线程/异步 IO
 - [ ] 分辨率自适应降采样推理
 - [ ] 文字检测隔帧推理 + 时序插值
+- [ ] 视频人脸 tracking（跨帧复用 bbox）
 
 ## CLI 用法
 

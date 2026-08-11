@@ -26,14 +26,8 @@ At least one of `--face`, `--osd-region`, `--osd-band`, or `--osd-text` must be 
 
 ```bash
 pip install media-redact
-```
 
-Install from source if the package is not yet on PyPI:
-
-```bash
-pip install /path/to/media-redact
-# or
-pip install git+https://example.com/media-redact.git
+pip install "media-redact[gpu]"    # if nvidia-gpu
 ```
 
 
@@ -48,7 +42,9 @@ media-redact --version
 media-region --help
 ```
 
-The face model (`face_det.onnx`) and OCR assets are cached under `**~/.media_redact/models/**` by default and **downloaded automatically on first use** (not bundled in the wheel). Override the location with `MEDIA_REDACT_MODEL_ROOT`.
+The face model (`face_det.onnx`) and OCR assets are cached under **`~/.media_redact/models/`** by default and **downloaded automatically on first use** (not bundled in the wheel). Override the location with `MEDIA_REDACT_MODEL_ROOT`.
+
+
 
 ## Quick Start
 
@@ -187,6 +183,8 @@ usage: media-redact [-h] [-o OUTPUT] [-r]
 | `--mosaic-size`            | 20        | Mosaic block size                                             |
 | `--keep-audio`             | false     | Preserve original audio for video                             |
 | `--disable-progress`       | false     | Disable progress bars                                         |
+| `--device`                 | auto      | ONNX device: `auto` (prefer CUDA), `cpu`, or `cuda`            |
+| `--num-worker`             | `min(4, CPU)` | Worker count; `>1` enables pipelined IO, `1` is sequential |
 | `--log-level`              | INFO      | `DEBUG` / `INFO` / `WARNING` / `ERROR`                        |
 
 
@@ -231,6 +229,8 @@ redact_image(
     mask_shape="polygon",
     mask_scale=1.3,
     mosaic_size=20,
+    device="auto",
+    num_worker=4,
     disable_progress=False,
 )
 

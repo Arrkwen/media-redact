@@ -12,6 +12,7 @@ from media_redact.api import redact_image, redact_video
 from media_redact.io.files import get_file_type
 from media_redact.log import logger, setup_logging
 from media_redact.paths import resolve_input_path, resolve_output_dir
+from media_redact.pipeline.frame_pipeline import DEFAULT_NUM_WORKER
 
 _BATCH_EMPTY_IMAGE_MSG = "No images found in the given inputs."
 _BATCH_EMPTY_VIDEO_MSG = "No videos found in the given inputs."
@@ -129,6 +130,22 @@ def parse_args() -> argparse.Namespace:
         help="Mosaic block size (default: 20)",
     )
     parser.add_argument(
+        "--device",
+        default="auto",
+        choices=["auto", "cpu", "cuda"],
+        help="ONNX Runtime device: auto (prefer CUDA), cpu, or cuda (default: auto)",
+    )
+    parser.add_argument(
+        "--num-worker",
+        type=int,
+        default=DEFAULT_NUM_WORKER,
+        metavar="N",
+        help=(
+            "Worker count for redaction pipeline; >1 enables pipelined IO "
+            f"(default: {DEFAULT_NUM_WORKER})"
+        ),
+    )
+    parser.add_argument(
         "--keep-audio",
         action="store_true",
         help="Keep audio track when processing video",
@@ -162,7 +179,6 @@ def _redact_directory(
         "output": output,
         "recursive": recursive,
     }
-
     try:
         results.extend(redact_image(input_path, **batch_kwargs))
     except FileNotFoundError as exc:
@@ -218,7 +234,9 @@ def main() -> None:
         "mask_shape": args.mask_shape,
         "mask_scale": args.mask_scale,
         "mosaic_size": args.mosaic_size,
+        "device": args.device,
         "disable_progress": args.disable_progress,
+        "num_worker": args.num_worker,
     }
 
     try:

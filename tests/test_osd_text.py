@@ -97,7 +97,7 @@ def test_text_osd_detector_pattern_mode_without_bands(tmp_path, monkeypatch):
 
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
-        lambda _path, model_label=None: FakeDetSession(),
+        lambda *_args, **_kwargs: FakeDetSession(),
     )
 
     detector = TextOSDDetector(
@@ -131,7 +131,7 @@ def test_text_osd_detector_runs_det_once_for_multiple_bands(tmp_path, monkeypatc
 
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
-        lambda _path, model_label=None: FakeDetSession(),
+        lambda *_args, **_kwargs: FakeDetSession(),
     )
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.DBPostProcess.__call__",
@@ -210,7 +210,7 @@ def test_build_osd_detector_osd_text_keeps_fixed_region_mask(tmp_path, monkeypat
     monkeypatch.setattr("media_redact.detect.osd.factory.paths.default_text_dict", lambda: dict_path)
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
-        lambda _path, model_label=None: FakeDetSession(),
+        lambda *_args, **_kwargs: FakeDetSession(),
     )
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.TextRecognizer",
@@ -250,7 +250,7 @@ def test_text_osd_detector_pipeline_order(tmp_path, monkeypatch):
 
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
-        lambda _path, model_label=None: FakeDetSession(),
+        lambda *_args, **_kwargs: FakeDetSession(),
     )
 
     detector = TextOSDDetector(
@@ -350,7 +350,7 @@ def test_text_osd_detector_band_only_returns_all_boxes(tmp_path, monkeypatch):
 
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
-        lambda _path, model_label=None: FakeDetSession(),
+        lambda *_args, **_kwargs: FakeDetSession(),
     )
 
     detector = TextOSDDetector(
@@ -387,7 +387,7 @@ def test_text_osd_detector_rec_and_pattern_filter(tmp_path, monkeypatch):
 
     monkeypatch.setattr(
         "media_redact.detect.osd.text_detector.load_onnx_session",
-        lambda _path, model_label=None: FakeDetSession(),
+        lambda *_args, **_kwargs: FakeDetSession(),
     )
 
     detector = TextOSDDetector(

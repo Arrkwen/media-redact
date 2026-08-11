@@ -24,15 +24,10 @@
 
 ```bash
 pip install media-redact
+
+pip install "media-redact[gpu]"    # 如果有nvidia-gpu
 ```
 
-若尚未发布到 PyPI，可从源码安装：
-
-```bash
-pip install /path/to/media-redact
-# 或
-pip install git+https://example.com/media-redact.git
-```
 
 | 命令 | 说明 |
 | ---- | ---- |
@@ -45,8 +40,6 @@ media-region --help
 ```
 
 人脸模型（`face_det.onnx`）与 OCR 资源默认缓存在 **`~/.media_redact/models/`**，**首次使用时自动下载**（不随 wheel 打包）。可通过环境变量 `MEDIA_REDACT_MODEL_ROOT` 覆盖路径。
-
-
 ## 快速上手
 
 ```bash
@@ -175,6 +168,8 @@ usage: media-redact [-h] [-o OUTPUT] [-r]
 | `--mosaic-size` | 20 | 马赛克块大小 |
 | `--keep-audio` | false | 视频保留音轨 |
 | `--disable-progress` | false | 关闭进度条 |
+| `--device` | auto | ONNX 推理设备：`auto`（优先 CUDA）/ `cpu` / `cuda` |
+| `--num-worker` | `min(4, CPU)` | 打码工作线程数；`>1` 启用读写流水线，`1` 为顺序处理 |
 | `--log-level` | INFO | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
 
 ## 区域标注工具（`media-region`）
@@ -216,6 +211,8 @@ redact_image(
     mask_shape="polygon",
     mask_scale=1.3,
     mosaic_size=20,
+    device="auto",
+    num_worker=4,
     disable_progress=False,
 )
 

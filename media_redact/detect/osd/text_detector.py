@@ -19,6 +19,7 @@ from media_redact.detect.osd.text_filter import TextRegionFilter, boxes_to_mask_
 from media_redact.detect.osd.text_preprocess import TextDetPreprocess
 from media_redact.detect.osd.text_recognizer import TextRecognizer
 from media_redact.log import logger
+from media_redact.model.onnx_runtime import DeviceKind
 
 
 class TextOSDDetector:
@@ -44,12 +45,17 @@ class TextOSDDetector:
         use_dilation: bool = True,
         pattern_filter: TextRegionFilter | None = None,
         recognizer: TextRecognizer | None = None,
+        device: DeviceKind | str = "auto",
     ) -> None:
         det_path = Path(det_model_path)
         if not det_path.exists():
             raise FileNotFoundError(f"Text detection model not found: {det_path}")
 
-        self._session = load_onnx_session(det_path, model_label="text detection")
+        self._session = load_onnx_session(
+            det_path,
+            model_label="text detection",
+            device=device,
+        )
         self.input_name = self._session.get_inputs()[0].name
         self.preprocess = TextDetPreprocess()
         self.postprocess = DBPostProcess(
@@ -67,7 +73,7 @@ class TextOSDDetector:
                     raise ValueError(
                         "osd_text requires text_rec.onnx and ppocrv6_dict.txt."
                     )
-                recognizer = TextRecognizer(rec_model_path, dict_path)
+                recognizer = TextRecognizer(rec_model_path, dict_path, device=device)
             self.recognizer = recognizer
             self.pattern_filter = pattern_filter
             self.bands = list(bands) if bands else []

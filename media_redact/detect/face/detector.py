@@ -14,6 +14,7 @@ from media_redact.detect.face.onnx_utils import (
     postprocess_multiscale_outputs,
     preprocess_bgr,
 )
+from media_redact.model.onnx_runtime import DeviceKind, create_inference_session
 
 DEFAULT_NMS_IOU = 0.3
 
@@ -27,18 +28,17 @@ class FaceDetector:
         *,
         score_threshold: float = 0.3,
         image_format: str = "rgb",
-        providers: list[str] | None = None,
+        device: DeviceKind | str = "auto",
     ) -> None:
         path = Path(model_path)
         if not path.exists():
             raise FileNotFoundError(f"ONNX model not found: {path}")
 
-        import onnxruntime as ort
-
-        if providers is None:
-            providers = ort.get_available_providers()
-
-        self._session = ort.InferenceSession(str(path), providers=providers)
+        self._session = create_inference_session(
+            path,
+            model_label="face detection",
+            device=device,
+        )
         self.score_threshold = score_threshold
         self.image_format = image_format
 
