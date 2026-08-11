@@ -92,6 +92,20 @@ def test_parse_args_face_and_osd_region(monkeypatch):
     assert args.osd_region == ["0,0,1,1"]
 
 
+def test_parse_args_recursive_default_true(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["media-redact", "photos/", "--face"])
+    args = parse_args()
+    assert args.recursive is True
+
+
+def test_parse_args_no_recursive(monkeypatch):
+    monkeypatch.setattr(
+        sys, "argv", ["media-redact", "photos/", "--face", "--no-recursive"]
+    )
+    args = parse_args()
+    assert args.recursive is False
+
+
 def test_parse_args_directory_batch_options(monkeypatch):
     monkeypatch.setattr(
         sys,

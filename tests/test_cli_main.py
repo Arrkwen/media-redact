@@ -15,12 +15,12 @@ def test_cli_directory_batch_calls_api(tmp_path, monkeypatch):
 
     calls: list[tuple[str, dict]] = []
 
-    def fake_redact_image(inputs, output=None, **kwargs):
-        calls.append(("image", {"inputs": inputs, "output": output, **kwargs}))
+    def fake_redact_image(input, output=None, **kwargs):
+        calls.append(("image", {"input": input, "output": output, **kwargs}))
         return [Path(output) / "a" / "one.jpg"]
 
-    def fake_redact_video(inputs, output=None, **kwargs):
-        calls.append(("video", {"inputs": inputs, "output": output, **kwargs}))
+    def fake_redact_video(input, output=None, **kwargs):
+        calls.append(("video", {"input": input, "output": output, **kwargs}))
         return [Path(output) / "clip.mp4"]
 
     monkeypatch.setattr(sys, "argv", ["media-redact", str(input_dir), "--face", "-r"])
@@ -44,7 +44,7 @@ def test_cli_directory_with_output(tmp_path, monkeypatch):
 
     captured: dict = {}
 
-    def fake_redact_image(inputs, output=None, **kwargs):
+    def fake_redact_image(input, output=None, **kwargs):
         captured.update({"output": output, **kwargs})
         return [output_dir / "a.jpg"]
 
@@ -62,7 +62,7 @@ def test_cli_directory_with_output(tmp_path, monkeypatch):
     monkeypatch.setattr("media_redact.cli.redact_image", fake_redact_image)
     monkeypatch.setattr(
         "media_redact.cli.redact_video",
-        lambda inputs, output=None, **kwargs: (_ for _ in ()).throw(
+        lambda input, output=None, **kwargs: (_ for _ in ()).throw(
             FileNotFoundError("No videos found in the given inputs.")
         ),
     )

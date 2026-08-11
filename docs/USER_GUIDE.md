@@ -167,7 +167,7 @@ usage: media-redact [-h] [-o OUTPUT] [-r]
 | -------------------------- | --------- | ------------------------------------------------------------- |
 | `input`                    | —         | Image/video path or directory                                 |
 | `-o, --output`             | see above | Output file (single input) or directory (directory input)     |
-| `-r, --recursive`          | false     | Recurse into subdirectories                                   |
+| `-r, --recursive`          | true      | Recurse into subdirectories; use `--no-recursive` to disable |
 | `--face`                   | false     | Enable face redaction                                         |
 | `--face-threshold`         | 0.3       | Face detection confidence threshold                           |
 | `--osd-region`             | —         | Fixed OSD region(s); repeatable                               |
@@ -212,10 +212,10 @@ media-region frame.jpg --port 9000
 
 ```python
 redact_image(
-    inputs,
+    input,
     output=None,
     *,
-    recursive=False,
+    recursive=True,
     face=False,
     face_threshold=0.3,
     osd_regions=None,

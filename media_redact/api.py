@@ -179,10 +179,10 @@ def _run_redact(
 
 
 def redact_image(
-    inputs: InputSpec,
+    input: InputSpec,
     output: str | Path | None = None,
     *,
-    recursive: bool = False,
+    recursive: bool = True,
     face: bool = False,
     face_threshold: float = 0.3,
     osd_regions: list[str] | None = None,
@@ -207,7 +207,7 @@ def redact_image(
     文件名与输入相同。
     """
     input_files, input_root, _has_directory_input = _collect_files(
-        inputs, "image", recursive=recursive
+        input, "image", recursive=recursive
     )
     output_root = resolve_output_dir(output)
     output_paths = [
@@ -243,10 +243,10 @@ def redact_image(
 
 
 def redact_video(
-    inputs: InputSpec,
+    input: InputSpec,
     output: str | Path | None = None,
     *,
-    recursive: bool = False,
+    recursive: bool = True,
     face: bool = False,
     face_threshold: float = 0.3,
     osd_regions: list[str] | None = None,
@@ -272,7 +272,7 @@ def redact_video(
     文件名与输入相同。
     """
     input_files, input_root, _has_directory_input = _collect_files(
-        inputs, "video", recursive=recursive
+        input, "video", recursive=recursive
     )
     output_root = resolve_output_dir(output)
     output_paths = [

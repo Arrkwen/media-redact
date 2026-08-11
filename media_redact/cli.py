@@ -35,8 +35,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-r",
         "--recursive",
-        action="store_true",
-        help="Recursively process files in subdirectories",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Recursively process files in subdirectories (default: true)",
     )
     parser.add_argument(
         "--face",

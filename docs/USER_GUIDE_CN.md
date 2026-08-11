@@ -152,7 +152,7 @@ usage: media-redact [-h] [-o OUTPUT] [-r]
 | ---- | ------ | ---- |
 | `input` | — | 图片/视频路径或目录 |
 | `-o, --output` | 见上文 | 单文件时为输出文件；目录时为输出目录 |
-| `-r, --recursive` | false | 递归处理子目录 |
+| `-r, --recursive` | true | 递归处理子目录；可用 `--no-recursive` 关闭 |
 | `--face` | false | 启用人脸打码 |
 | `--face-threshold` | 0.3 | 人脸检测置信度阈值 |
 | `--osd-region` | — | 固定 OSD 区域；可重复 |
@@ -194,10 +194,10 @@ media-region frame.jpg --port 9000
 
 ```python
 redact_image(
-    inputs,
+    input,
     output=None,
     *,
-    recursive=False,
+    recursive=True,
     face=False,
     face_threshold=0.3,
     osd_regions=None,
